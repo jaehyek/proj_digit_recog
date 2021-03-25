@@ -3,7 +3,8 @@ import os
 from glob import glob
 import codecs, json
 from PIL import Image
-
+import random
+import shutil
 
 def saveimage(sub,dir_digit, basename ):
     filename_jpg = os.path.join(dir_digit, basename + '.jpg')
@@ -56,23 +57,63 @@ def makeImageFolder(folder_json, folder_digit):
     
     for file_json in list_json:
         file_bmp = os.path.splitext(file_json)[0] + '.bmp'
-        if '10061-56397.json' in file_json:
-            print('asdf')
         extractDigit_saveto(file_json, file_bmp, list_dir_digit)
         
 
+def makeTrainValidFromDigitClass(dir_digit_class, dir_train, dir_valid, ratio=(8,2)):
+    try:
+        if not os.path.isdir(dir_train):
+            os.mkdir(dir_train)
+    except:
+        pass
+    
+    for num in range(10):
+        try:
+            dir_digit = os.path.join(dir_train, f'{num}')
+            os.mkdir(dir_digit)
+        except:
+            continue
+
+    try:
+        if not os.path.isdir(dir_valid):
+            os.mkdir(dir_valid)
+    except:
+        pass
+
+    for num in range(10):
+        try:
+            dir_digit = os.path.join(dir_valid, f'{num}')
+            os.mkdir(dir_digit)
+        except:
+            continue
+            
+    for index in range(10):
+        dir_src = os.path.join(dir_digit_class, str(index))
+        dir_train_dest = os.path.join(dir_train, str(index))
+        dir_valid_dest = os.path.join(dir_valid, str(index))
+        
+        list_src = glob(dir_src + r"\*.jpg")
+        len_src = len(list_src)
+        len_train, len_valid = ratio
+        len_train =  int(len_train / ( len_train + len_valid) * len_src)
+        len_valid = len_src - len_train
+        list_src_index = list(range(len_src))
+        list_train_index = random.sample(list_src_index, len_train)
+        list_valid_index = list(set(list_src_index) - set(list_train_index))
+        
+        # copy files to train
+        for file_index in list_train_index :
+            file_src = list_src[file_index]
+            shutil.copy(file_src, dir_train_dest)
+
+        # copy files to valid
+        for file_index in list_valid_index:
+            file_src = list_src[file_index]
+            shutil.copy(file_src, dir_valid_dest)
+        
+
 if __name__ == '__main__' :
-    # img = Image.open(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56265.bmp')
-    # cropped_img = img.crop((100,100,200,200))
-    # cropped_img.show()
-    # cropped_img.save('bb.jpg')
-    # num_img = np.array(img)
-    # num_img = num_img[:, :, None] * np.ones(3, dtype=int)[None, None, :]
-
-    # pil_image = Image.fromarray(num_img)
-    # pil_image.show()
-
-
     makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class')
+    makeTrainValidFromDigitClass(r'.\digit_class', r'.\digit_class_train', r'.\digit_class_valid', ratio=(8, 2))
 
 
