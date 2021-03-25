@@ -1,0 +1,9 @@
+1. 먼저 Anaconda3-5.3.1-Windows-x86_64.exe 을 실행하고, 설치를 시작한다.
+   - all Users 선택
+   - path 지정 check box을 선택한다.
+   - vs code 설치 화면에서는   skip을 선택한다.
+
+# CUDA 10.1
+conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=10.1 -c pytorch
+
+pip install opencv-python
