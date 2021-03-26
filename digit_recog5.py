@@ -28,6 +28,21 @@ def imshow(inp, cmap=None):
     plt.imshow(inp, cmap)
 
 
+class LayerActivations():
+    features = None
+    
+    def __init__(self, model, layer_num):
+        # print(model[layer_num])
+        self.hook = model[layer_num].register_forward_hook(self.hook_fn)
+    
+    def hook_fn(self, module, input, output):
+        print(f'module:{module}, input_shape:{input[0].shape}, output shape:{output.shape}')
+        # self.features = output.cpu().data.numpy()
+    
+    def remove(self):
+        self.hook.remove()
+        
+
 is_cuda = False
 if torch.cuda.is_available():
     is_cuda = True
@@ -62,6 +77,39 @@ features = vgg.features
 def preconvfeat(dataset, model):
     conv_features = []
     labels_list = []
+    
+    conv_out0 = LayerActivations(model, 0 )
+    conv_out1 = LayerActivations(model, 1 )
+    conv_out2 = LayerActivations(model, 2 )
+    conv_out3 = LayerActivations(model, 3 )
+    conv_out4 = LayerActivations(model, 4 )
+    conv_out5 = LayerActivations(model, 5 )
+    conv_out6 = LayerActivations(model, 6 )
+    conv_out7 = LayerActivations(model, 7 )
+    conv_out8 = LayerActivations(model, 8 )
+    conv_out9 = LayerActivations(model, 9 )
+    conv_out10= LayerActivations(model, 10)
+    conv_out11= LayerActivations(model, 11)
+    conv_out12= LayerActivations(model, 12)
+    conv_out13= LayerActivations(model, 13)
+    conv_out14= LayerActivations(model, 14)
+    conv_out15= LayerActivations(model, 15)
+    conv_out16= LayerActivations(model, 16)
+    conv_out17= LayerActivations(model, 17)
+    conv_out18= LayerActivations(model, 18)
+    conv_out19= LayerActivations(model, 19)
+    conv_out20= LayerActivations(model, 20)
+    conv_out21= LayerActivations(model, 21)
+    conv_out22= LayerActivations(model, 22)
+    conv_out23= LayerActivations(model, 23)
+    conv_out24= LayerActivations(model, 24)
+    conv_out25= LayerActivations(model, 25)
+    conv_out26= LayerActivations(model, 26)
+    conv_out27= LayerActivations(model, 27)
+    conv_out28= LayerActivations(model, 28)
+    conv_out29= LayerActivations(model, 29)
+    conv_out30 = LayerActivations(model, 30)
+    
     for data in dataset:
         inputs, labels = data
         if is_cuda:
@@ -114,7 +162,10 @@ val_feat_loader = DataLoader(val_feat_dataset, batch_size=64, shuffle=True)
 optimizer = optim.SGD(vgg.classifier.parameters(), lr=0.0001, momentum=0.5)
 
 
+
+
 def fit_numpy(epoch, model, data_loader, phase='training', volatile=False):
+    
     if phase == 'training':
         model.train()
     if phase == 'validation':
@@ -170,104 +221,6 @@ plt.plot(range(1, len(val_accuracy) + 1), val_accuracy, 'r', label='val accuracy
 plt.legend()
 plt.show()
 exit()
-
-
-
-
-
-
-
-
-train_data_loader = torch.utils.data.DataLoader(train, batch_size=32, num_workers=3, shuffle=False)
-img, label = next(iter(train_data_loader))
-
-imshow(img[5])
-
-img = img[5][None]
-vgg = models.vgg16(pretrained=True).cuda()
-
-
-class LayerActivations():
-    features = None
-    
-    def __init__(self, model, layer_num):
-        self.hook = model[layer_num].register_forward_hook(self.hook_fn)
-    
-    def hook_fn(self, module, input, output):
-        self.features = output.cpu().data.numpy()
-    
-    def remove(self):
-        self.hook.remove()
-
-
-conv_out = LayerActivations(vgg.features, 0)
-
-o = vgg(Variable(img.cuda()))
-
-conv_out.remove()
-
-act = conv_out.features
-
-fig = plt.figure(figsize=(20, 50))
-fig.subplots_adjust(left=0, right=1, bottom=0, top=0.8, hspace=0, wspace=0.2)
-for i in range(30):
-    ax = fig.add_subplot(12, 5, i + 1, xticks=[], yticks=[])
-    ax.imshow(act[0][i])
-
-conv_out = LayerActivations(vgg.features, 1)
-
-o = vgg(Variable(img.cuda()))
-
-conv_out.remove()
-
-act = conv_out.features
-
-fig = plt.figure(figsize=(20, 50))
-fig.subplots_adjust(left=0, right=1, bottom=0, top=0.8, hspace=0, wspace=0.2)
-for i in range(30):
-    ax = fig.add_subplot(12, 5, i + 1, xticks=[], yticks=[])
-    ax.imshow(act[0][i])
-
-
-def imshow(inp):
-    """Imshow for Tensor."""
-    inp = inp.numpy().transpose((1, 2, 0))
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    inp = std * inp + mean
-    inp = np.clip(inp, 0, 1)
-    plt.imshow(inp)
-
-
-conv_out = LayerActivations(vgg.features, 1)
-
-o = vgg(Variable(img.cuda()))
-
-conv_out.remove()
-
-act = conv_out.features
-
-fig = plt.figure(figsize=(20, 50))
-fig.subplots_adjust(left=0, right=1, bottom=0, top=0.8, hspace=0, wspace=0.2)
-for i in range(30):
-    ax = fig.add_subplot(12, 5, i + 1, xticks=[], yticks=[])
-    ax.imshow(act[0][i])
-
-vgg = models.vgg16(pretrained=True).cuda()
-vgg.state_dict().keys()
-cnn_weights = vgg.state_dict()['features.0.weight'].cpu()
-
-fig = plt.figure(figsize=(30, 30))
-fig.subplots_adjust(left=0, right=1, bottom=0, top=0.8, hspace=0, wspace=0.2)
-for i in range(30):
-    ax = fig.add_subplot(12, 6, i + 1, xticks=[], yticks=[])
-    imshow(cnn_weights[i])
-
-fig = plt.figure(figsize=(30, 30))
-fig.subplots_adjust(left=0, right=1, bottom=0, top=0.8, hspace=0, wspace=0.2)
-for i in range(30):
-    ax = fig.add_subplot(12, 6, i + 1, xticks=[], yticks=[])
-    imshow(cnn_weights[i])
 
 
 
