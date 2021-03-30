@@ -5,6 +5,11 @@ import codecs, json
 from PIL import Image
 import random
 import shutil
+import cv2
+import numpy as np
+import albumentations as A
+import random
+
 
 def saveimage(sub,dir_digit, basename ):
     filename_jpg = os.path.join(dir_digit, basename + '.jpg')
@@ -112,8 +117,55 @@ def makeTrainValidFromDigitClass(dir_digit_class, dir_train, dir_valid, ratio=(8
             shutil.copy(file_src, dir_valid_dest)
         
 
+def imagesave(image, file_out):
+    result, encoded_img = cv2.imencode('.jpg', image)
+    if result:
+        with open(file_out, mode='w+b') as f:
+            encoded_img.tofile(f)
+
+def imageread(file_in):
+    img_array = np.fromfile(file_in, np.uint8)
+    image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    return image
+            
+def imageAugmentation(dir_in, dir_out):
+    random.seed(42)
+    try:
+        if not os.path.isdir(dir_out) :
+            os.mkdir(dir_out)
+    except:
+        pass
+
+    list_jpg = glob(dir_in + r"\**\*.jpg", recursive=True)
+    
+    list_aug = [ A.CLAHE(), A.OpticalDistortion(),A.GridDistortion(),A.HueSaturationValue(),A.GaussNoise(),
+                 A.MotionBlur(p=.2), A.RandomBrightnessContrast(p=0.2), A.InvertImg(), A.ISONoise(),
+                 A.RandomFog(), A.RandomRain(), A.RandomSnow() ]
+    list_aug_name = [ 'CLAHE', 'OpticalDist', 'GridDist', 'HueSat', 'GaussNoise', 'MotionBlur', 'RandomBright',
+                      'InvertImg', 'IsoNoise', 'RandomFog', 'RandomRain', 'RandomSnow']
+    
+    for jpg in list_jpg :
+        jpg_out = jpg.replace(dir_in, dir_out)
+        dir_out_jpg = os.path.dirname(jpg_out)
+        try:
+            if not os.path.exists(dir_out_jpg) :
+                os.mkdir(dir_out_jpg)
+        except:
+            pass
+        jpg_out_basename = os.path.splitext(jpg_out)[0]
+        image = imageread(jpg)
+        imagesave(image, jpg_out_basename + '.jpg')     # save the orignal image.
+        for i in range( len(list_aug )) :
+            augmented_image = list_aug[i](image=image)['image']
+            imagesave(augmented_image, jpg_out_basename + '_' + list_aug_name[i] + '.jpg')
+    
+    
+    
+    
+    
 if __name__ == '__main__' :
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class')
-    makeTrainValidFromDigitClass(r'.\digit_class', r'.\digit_class_train', r'.\digit_class_valid', ratio=(8, 2))
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class')
+    # imageAugmentation(r'.\digit_class', r'.\digit_class_aug')
+    makeTrainValidFromDigitClass(r'.\digit_class_aug', r'.\digit_class_train', r'.\digit_class_valid', ratio=(8, 2))
 
 

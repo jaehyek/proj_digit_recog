@@ -200,8 +200,8 @@ def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=No
 
 if __name__ == '__main__' :
     # 처음 학습시킬때.
-    # loss, acc = DigitRecogModel(r'.\digit_class_train', dropout=0.2, phase='training', model_path_load = None, model_path_save=r'./model.pt')
-    # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
+    loss, acc = DigitRecogModel(r'.\digit_class_train', dropout=0.2, phase='training', model_path_load = None, model_path_save=r'./model.pt')
+    print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
     
     # 학습된 것을 이어 받아서  학습할 때,
     loss, acc = DigitRecogModel(r'.\digit_class_valid', dropout=0.2, phase='training', model_path_load=r'./model.pt', model_path_save=r'./model.pt')
