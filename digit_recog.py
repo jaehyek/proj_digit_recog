@@ -175,8 +175,11 @@ def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=No
 
     train_losses, train_accuracy = [], []
     epoch_loop = 200 if phase=='training' else 1
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[30,80,150,180], gamma=0.5)
     for epoch in range(epoch_loop):
         epoch_loss, epoch_accuracy = fit_numpy(epoch, vgg.classifier, train_feat_loader, phase=phase)
+        if phase=='training':
+            scheduler.step()
         train_losses.append(epoch_loss)
         train_accuracy.append(epoch_accuracy)
 
@@ -200,8 +203,8 @@ def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=No
 
 if __name__ == '__main__' :
     # 처음 학습시킬때.
-    loss, acc = DigitRecogModel(r'.\digit_class_train', dropout=0.2, phase='training', model_path_load = None, model_path_save=r'./model.pt')
-    print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
+    # loss, acc = DigitRecogModel(r'.\digit_class_train', dropout=0.2, phase='training', model_path_load = None, model_path_save=r'./model.pt')
+    # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
     
     # 학습된 것을 이어 받아서  학습할 때,
     loss, acc = DigitRecogModel(r'.\digit_class_valid', dropout=0.2, phase='training', model_path_load=r'./model.pt', model_path_save=r'./model.pt')
