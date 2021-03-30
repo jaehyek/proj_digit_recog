@@ -52,39 +52,6 @@ def preconvfeat(dataset, model):
     conv_features = []
     labels_list = []
 
-    # conv_out0 = LayerActivations(model, 0 )
-    # conv_out1 = LayerActivations(model, 1 )
-    # conv_out2 = LayerActivations(model, 2 )
-    # conv_out3 = LayerActivations(model, 3 )
-    # conv_out4 = LayerActivations(model, 4 )
-    # conv_out5 = LayerActivations(model, 5 )
-    # conv_out6 = LayerActivations(model, 6 )
-    # conv_out7 = LayerActivations(model, 7 )
-    # conv_out8 = LayerActivations(model, 8 )
-    # conv_out9 = LayerActivations(model, 9 )
-    # conv_out10= LayerActivations(model, 10)
-    # conv_out11= LayerActivations(model, 11)
-    # conv_out12= LayerActivations(model, 12)
-    # conv_out13= LayerActivations(model, 13)
-    # conv_out14= LayerActivations(model, 14)
-    # conv_out15= LayerActivations(model, 15)
-    # conv_out16= LayerActivations(model, 16)
-    # conv_out17= LayerActivations(model, 17)
-    # conv_out18= LayerActivations(model, 18)
-    # conv_out19= LayerActivations(model, 19)
-    # conv_out20= LayerActivations(model, 20)
-    # conv_out21= LayerActivations(model, 21)
-    # conv_out22= LayerActivations(model, 22)
-    # conv_out23= LayerActivations(model, 23)
-    # conv_out24= LayerActivations(model, 24)
-    # conv_out25= LayerActivations(model, 25)
-    # conv_out26= LayerActivations(model, 26)
-    # conv_out27= LayerActivations(model, 27)
-    # conv_out28= LayerActivations(model, 28)
-    # conv_out29= LayerActivations(model, 29)
-    # conv_out30 = LayerActivations(model, 30)
-    
-
     for data in dataset:
         inputs, labels = data
         if is_cuda:
@@ -140,10 +107,10 @@ def fit_numpy(epoch, model, data_loader, phase='training', volatile=False):
     accuracy = 100. * running_correct / len(data_loader.dataset)
     
     print(
-        f'{phase} loss is {loss:{5}.{2}} and {phase} accuracy is {running_correct}/{len(data_loader.dataset)}{accuracy:{10}.{4}}')
+        f'epoch:{epoch}, {phase} loss is {loss:{5}.{2}} and {phase} accuracy is {running_correct}/{len(data_loader.dataset)}{accuracy:{10}.{4}}')
     return loss, accuracy
 
-def makeDigitRecogModel(dir_train, dropout=0.5, phase='training', model_path=r'./model.pth'):
+def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=None, model_path_save=r'./model.pt'):
     global is_cuda, optimizer
     is_cuda = False
     if torch.cuda.is_available():
@@ -162,51 +129,85 @@ def makeDigitRecogModel(dir_train, dropout=0.5, phase='training', model_path=r'.
     
     # img, label = next(iter(train_data_loader))
     # imshow(img[0])
+    
+    if phase == 'training'  and model_path_load == None:
+        vgg = models.vgg16(pretrained=True)
+        vgg.classifier[6].out_features = 10
+        # vgg.classifier[6] = nn.Linear(in_features=4096, out_features=10, bias=True)
+        if is_cuda == True:
+            vgg = vgg.cuda()
+        optimizer = optim.SGD(vgg.classifier.parameters(), lr=0.0001, momentum=0.5)
+        
+    else:   # phase == 'validation'
+        if model_path_load == None:
+            print('model_path must not be None.')
+            raise Exception("model_path must not be None.")
+            
+        vgg = models.vgg16(pretrained=False)
+        vgg.classifier[6].out_features = 10
+        # vgg.classifier[6] = nn.Linear(in_features=4096, out_features=10, bias=True)
+        if is_cuda == True:
+            vgg = vgg.cuda()
+        optimizer = optim.SGD(vgg.classifier.parameters(), lr=0.0001, momentum=0.5)
 
-    vgg = models.vgg16(pretrained=True).cuda()
-
+        checkpoint = torch.load(model_path_load)
+        vgg.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    
     for layer in vgg.classifier.children():
         if (type(layer) == nn.Dropout):
             layer.p = dropout
+
+    print(f'___ execute the preconvfeat ___')
     
-    # if is_cuda == True :
-    #     vgg.classifier[0] = nn.Linear(in_features=8192, out_features=4096, bias=True).cuda()
-    # else:
-    #     vgg.classifier[0] = nn.Linear(in_features=8192, out_features=4096, bias=True)
-    vgg.classifier[6].out_features = 10
     for param in vgg.features.parameters():
         param.requires_grad = False  # features 는 grad가 update되지 못하게 막는다.
-    
+
     features = vgg.features
-
-
-    print(f'execute the preconvfeat')
     conv_feat_train, labels_train = preconvfeat(train_data_loader, features)
-    print(f'finish the preconvfeat')
+
+    print(f'___ finish the preconvfeat ___')
 
     train_feat_dataset = My_dataset(conv_feat_train, labels_train)
     train_feat_loader = DataLoader(train_feat_dataset, batch_size=16, shuffle=True)
 
-    optimizer = optim.SGD(vgg.classifier.parameters(), lr=0.0001, momentum=0.5)
+    
 
     train_losses, train_accuracy = [], []
-    for epoch in range(1, 200):
-        print(f'epoch:{epoch}')
+    epoch_loop = 200 if phase=='training' else 1
+    for epoch in range(epoch_loop):
         epoch_loss, epoch_accuracy = fit_numpy(epoch, vgg.classifier, train_feat_loader, phase=phase)
-       
         train_losses.append(epoch_loss)
         train_accuracy.append(epoch_accuracy)
 
 
-    plt.plot(range(1, len(train_losses) + 1), train_losses, 'bo', label='training loss')
-    plt.legend()
-    plt.show()
-    plt.close()
+    # plt.plot(range(1, len(train_losses) + 1), train_losses, 'bo', label='loss')
+    # plt.legend()
+    # plt.show()
+    # plt.close()
+    #
+    # plt.plot(range(1, len(train_accuracy) + 1), train_accuracy, 'bo', label='accuracy')
+    # plt.legend()
+    # plt.show()
 
-    plt.plot(range(1, len(train_accuracy) + 1), train_accuracy, 'bo', label='train accuracy')
-    plt.legend()
-    plt.show()
+    if model_path_save != None:
+        torch.save({
+            'model_state_dict': vgg.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        }, model_path_save)
+    
+    return train_losses[-1], train_accuracy[-1]
 
 if __name__ == '__main__' :
-    makeDigitRecogModel(r'.\digit_class_train', phase='training', model_path=r'./model.pt')
-    # makeDigitRecogModel(r'.\digit_class_train', phase='validation')
+    # 처음 학습시킬때.
+    # loss, acc = DigitRecogModel(r'.\digit_class_train', dropout=0.2, phase='training', model_path_load = None, model_path_save=r'./model.pt')
+    # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
+    
+    # 학습된 것을 이어 받아서  학습할 때,
+    loss, acc = DigitRecogModel(r'.\digit_class_valid', dropout=0.2, phase='training', model_path_load=r'./model.pt', model_path_save=r'./model.pt')
+    print(f'Model  validation  loss:{loss}, accuracy:{acc}')
+    
+    # 학습을 확인하고자 할 때,
+    loss, acc = DigitRecogModel(r'.\digit_class_valid', dropout=0.2, phase='validation', model_path_load=r'./model.pt',model_path_save=None)
+    print(f'Model  validation  loss:{loss}, accuracy:{acc}')
+    
