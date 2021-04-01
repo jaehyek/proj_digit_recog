@@ -65,7 +65,7 @@ def makeImageFolder(folder_json, folder_digit):
         extractDigit_saveto(file_json, file_bmp, list_dir_digit)
         
 
-def makeTrainValidFromDigitClass(dir_digit_class, dir_train, dir_valid, ratio=(8,2)):
+def makeTrainValidFromDigitClass(dir_digit_class, dir_train, dir_valid, train_ratio=0.8):
     try:
         if not os.path.isdir(dir_train):
             os.mkdir(dir_train)
@@ -99,8 +99,7 @@ def makeTrainValidFromDigitClass(dir_digit_class, dir_train, dir_valid, ratio=(8
         
         list_src = glob(dir_src + r"\*.jpg")
         len_src = len(list_src)
-        len_train, len_valid = ratio
-        len_train =  int(len_train / ( len_train + len_valid) * len_src)
+        len_train =  int(train_ratio * len_src)
         len_valid = len_src - len_train
         list_src_index = list(range(len_src))
         list_train_index = random.sample(list_src_index, len_train)
@@ -158,14 +157,51 @@ def imageAugmentation(dir_in, dir_out):
         for i in range( len(list_aug )) :
             augmented_image = list_aug[i](image=image)['image']
             imagesave(augmented_image, jpg_out_basename + '_' + list_aug_name[i] + '.jpg')
+
+
+def extractDigitImage_Value_List(file_json, file_bmp):
+    img = Image.open(file_bmp)
+    if img == None:
+        print(f"Can't read a image file :{file_bmp}")
+        return [], []
     
+    img = img.convert('RGB')
+    with codecs.open(file_json, 'r', encoding='utf-8') as f:
+        dict_json_info = json.load(f)
+        digitFractNo = int(dict_json_info['digitFractNo'])
+        digitAllNo = int(dict_json_info['digitAllNo'])
+        dataValue = int(dict_json_info['dataValue'] * 10 ** digitFractNo)
+        digitRect = dict_json_info['digitRect']
+        str_dataValue = f'{dataValue:0{digitAllNo}}'
+        
+        list_digitRect = digitRect.split('|')[1:]
+        list_digitRect = [aa.split(',') for aa in list_digitRect]
+        list_digitRect = [[int(a), int(b), int(c), int(d)] for a, b, c, d in list_digitRect]
+        
+        
+        
+        list_image = []
+        for index in range(digitAllNo):
+            x, y, width, height = list_digitRect[index]
+            sub = img.crop((x, y, x + width, y + height))
+            list_image.append(sub)
+            
+    return list_image, [int(aa) for aa in str_dataValue],  dict_json_info
     
-    
+def get_Image_Value_List_from_json(file_json):
+    list_image, list_value, dict_json_info = extractDigitImage_Value_List( file_json, os.path.splitext(file_json)[0] + '.bmp')
+    return list_image, list_value, dict_json_info
+
     
     
 if __name__ == '__main__' :
+    # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class')
+    
+    # Image Augment을 위해  input dir을 지정해 주면, output dir에  이미지 증강 시켜 저장한다.
     # imageAugmentation(r'.\digit_class', r'.\digit_class_aug')
-    makeTrainValidFromDigitClass(r'.\digit_class_aug', r'.\digit_class_train', r'.\digit_class_valid', ratio=(8, 2))
+    
+    # 분류된 input dir을 지정해 주면,    지정한 train dir에,  지정한 valid dir에   비율대로, 이미지를 분산 저장한다.
+    makeTrainValidFromDigitClass(r'.\digit_class_aug', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
 
 
