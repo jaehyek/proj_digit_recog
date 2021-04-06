@@ -180,11 +180,11 @@ def imageAugmentation(dir_in, dir_out):
         iaa.DirectedEdgeDetect(alpha=0.5, direction=0),
     ]
     list_aa_name = [
-        'MedianBlur',
+        # 'MedianBlur',
         'Dropout',
         'Emboss',
         'AdditiveGaussianNoise',
-        'ElasticTransformation',
+        # 'ElasticTransformation',
         'PiecewiseAffine',
         'EdgeDetect',
         'Sharpen',

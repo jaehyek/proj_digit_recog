@@ -287,6 +287,7 @@ if __name__ == '__main__':
     # 기존학습에 추가 학습시킬때.
     loss, acc = DigitRecogModel(r'.\digit_class_aug', dropout=0.2, phase='training', model_path_load=r'./model.pt',
                                 model_path_save=r'./model.pt')
+    
     print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
     
     # test할 json을 받아서  예측한 값을 확인.
