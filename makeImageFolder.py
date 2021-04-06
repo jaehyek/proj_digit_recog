@@ -9,7 +9,9 @@ import cv2
 import numpy as np
 import albumentations as A
 import random
+from imgaug import augmenters as iaa
 
+# https://github.com/albumentations-team/albumentations
 
 def saveimage(sub,dir_digit, basename ):
     filename_jpg = os.path.join(dir_digit, basename + '.jpg')
@@ -36,7 +38,7 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit):
         for index  in range(digitAllNo) :
             x, y, width, height = list_digitRect[index]
             sub = img.crop((x,y,x+width,y+height))
-            saveimage(sub,list_dir_digit[int(str_dataValue[index])], os.path.basename(file_json).split('.')[0] )
+            saveimage(sub,list_dir_digit[int(str_dataValue[index])], os.path.basename(file_json).split('.')[0] + f'_{index}' )
 
 
 
@@ -137,11 +139,58 @@ def imageAugmentation(dir_in, dir_out):
 
     list_jpg = glob(dir_in + r"\**\*.jpg", recursive=True)
     
-    list_aug = [ A.CLAHE(), A.OpticalDistortion(),A.GridDistortion(),A.HueSaturationValue(),A.GaussNoise(),
-                 A.MotionBlur(p=.2), A.RandomBrightnessContrast(p=0.2), A.InvertImg(), A.ISONoise(),
-                 A.RandomFog(), A.RandomRain(), A.RandomSnow() ]
-    list_aug_name = [ 'CLAHE', 'OpticalDist', 'GridDist', 'HueSat', 'GaussNoise', 'MotionBlur', 'RandomBright',
-                      'InvertImg', 'IsoNoise', 'RandomFog', 'RandomRain', 'RandomSnow']
+    list_aug = [
+        A.CLAHE(),
+        A.OpticalDistortion(),
+        A.GridDistortion(),
+        A.HueSaturationValue(),
+        A.GaussNoise(),
+        A.MotionBlur(p=.2),
+        A.RandomBrightnessContrast(p=0.05),
+        A.InvertImg(),
+        A.ISONoise(),
+        A.RandomFog(),
+        # A.RandomRain(),
+        # A.RandomSnow()
+    ]
+    list_aug_name = [
+        'CLAHE',
+        'OpticalDist',
+        'GridDist',
+        'HueSat',
+        'GaussNoise',
+        'MotionBlur',
+        'RandomBright',
+        'InvertImg',
+        'IsoNoise',
+        'RandomFog',
+        # 'RandomRain',
+        # 'RandomSnow'
+    ]
+
+    list_aa = [
+        # iaa.MedianBlur(k=(3, 11)),
+        iaa.Dropout((0.05, 0.06), per_channel=0.5),
+        iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),
+        iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5),
+        # iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),
+        iaa.PiecewiseAffine(scale=(0.01, 0.02)),
+        iaa.EdgeDetect(alpha=0.3),
+        iaa.Sharpen(alpha=(0.0, 1.0)),
+        iaa.DirectedEdgeDetect(alpha=0.5, direction=0),
+    ]
+    list_aa_name = [
+        'MedianBlur',
+        'Dropout',
+        'Emboss',
+        'AdditiveGaussianNoise',
+        'ElasticTransformation',
+        'PiecewiseAffine',
+        'EdgeDetect',
+        'Sharpen',
+        'DirectedEdgeDetect',
+    ]
+    
     
     for jpg in list_jpg :
         jpg_out = jpg.replace(dir_in, dir_out)
@@ -157,6 +206,10 @@ def imageAugmentation(dir_in, dir_out):
         for i in range( len(list_aug )) :
             augmented_image = list_aug[i](image=image)['image']
             imagesave(augmented_image, jpg_out_basename + '_' + list_aug_name[i] + '.jpg')
+            
+        for i in range( len(list_aa )) :
+            augmented_image = list_aa[i](image=image)
+            imagesave(augmented_image, jpg_out_basename + '_' + list_aa_name[i] + '.jpg')
 
 
 def extractDigitImage_Value_List(file_json, file_bmp):
@@ -197,11 +250,15 @@ def get_Image_Value_List_from_json(file_json):
 if __name__ == '__main__' :
     # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class')
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples_temp', r'.\digit_class')
     
     # Image Augment을 위해  input dir을 지정해 주면, output dir에  이미지 증강 시켜 저장한다.
-    # imageAugmentation(r'.\digit_class', r'.\digit_class_aug')
+    imageAugmentation(r'.\digit_class', r'.\digit_class_aug')
+    # imageAugmentation(r'D:\proj_gauge\test_class', r'D:\proj_gauge\test_class_aug')
+    
     
     # 분류된 input dir을 지정해 주면,    지정한 train dir에,  지정한 valid dir에   비율대로, 이미지를 분산 저장한다.
     makeTrainValidFromDigitClass(r'.\digit_class_aug', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
+    # makeTrainValidFromDigitClass(r'.\digit_class', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
 
 
