@@ -36,19 +36,27 @@ class conv_autoencoder(nn.Module):
     def __init__(self):
         super(conv_autoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 16, 3, stride=3, padding=1),
+            nn.Conv2d(1, 64, 3, stride=1, padding=2),
             nn.ReLU(True),
-            nn.MaxPool2d(2, stride=2),
-            nn.Conv2d(16, 8, 3, stride=2, padding=1),
+            nn.MaxPool2d(2, stride=1),
+            nn.Conv2d(64, 32, 3, stride=1, padding=2),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=1),
+            nn.Conv2d(32, 16, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=1),
+            nn.Conv2d(16, 8, 3, stride=1, padding=1),
             nn.ReLU(True),
             nn.MaxPool2d(2, stride=1)
         )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(8, 16, 3, stride=2),
+            nn.ConvTranspose2d(8, 16, 3, stride=1, padding=1),
             nn.ReLU(True),
-            nn.ConvTranspose2d(16, 8, 5, stride=3, padding=1),
+            nn.ConvTranspose2d(16, 32, 3, stride=1, padding=1),
             nn.ReLU(True),
-            nn.ConvTranspose2d(8, 1, 2, stride=2, padding=1),
+            nn.ConvTranspose2d(32, 64, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, 1, 3, stride=1, padding=1),
             nn.Tanh()
         )
     
@@ -71,7 +79,7 @@ def make_ref_image(image_ref, index) :
 
 def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, model_path_save=None):
     
-    number_epochs = 1000
+    number_epochs = 5000
     batch_size = 10
     learning_rate = 0.0001
 
@@ -143,10 +151,10 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
         if epoch % 10 == 0:
             print(index)
             pic = to_image(output.cpu().data)
-            save_image(pic, './dc_img/img_{:04d}_in.png'.format(epoch))
+            save_image(pic, './dc_img/img_{:04d}_out.png'.format(epoch))
 
             pic = to_image(img.cpu().data)
-            save_image(pic, './dc_img/img_{:04d}_out.png'.format(epoch))
+            save_image(pic, './dc_img/img_{:04d}_in.png'.format(epoch))
             
     
     torch.save({
@@ -210,16 +218,16 @@ def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_p
         
 def save_encoder_image(output, loop, indices, list_dir_digit):
     list_index = indices.tolist()
+    pic = to_image(output.cpu().data)
     for i, index in enumerate(list_index) :
         dir_save = list_dir_digit[index]
-        pic = to_image(output.cpu().data)
         save_image(pic[i], os.path.join(dir_save, str(f'{loop}_{i}.jpg')))
 
 
 
 if __name__ == '__main__':
     time_start = time.time()
-    # conv_autoencoder_model(r'.\digit_class_aug', r'.\digit_class_ref',model_path_load=r'./conv_ae.pt', model_path_save=r'./conv_ae.pt')
+    conv_autoencoder_model(r'.\digit_class_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae.pt', model_path_save=r'./conv_ae.pt')
     
     make_autoencoder_digit_from_class( r'.\digit_class_aug', r'.\digit_class_autoencoder', model_path_load=r'./conv_ae.pt' )
     print(f'elapsed time sec  : {time.time() - time_start}')

@@ -18,7 +18,7 @@ def saveimage(sub,dir_digit, basename ):
     sub.save(filename_jpg)
 
 
-def extractDigit_saveto(file_json, file_bmp, list_dir_digit):
+def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
     with codecs.open(file_json, 'r', encoding='utf-8') as f:
         dict_bmp_info = json.load(f)
         digitFractNo = int(dict_bmp_info['digitFractNo'])
@@ -26,6 +26,11 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit):
         dataValue = int(dict_bmp_info['dataValue'] * 10 ** digitFractNo)
         digitRect = dict_bmp_info['digitRect']
         str_dataValue = f'{dataValue:0{digitAllNo}}'
+        
+        if digit_type == 'digit_7'  and digitAllNo > 5 :
+            return
+        elif digit_type == 'digit_normal'  and digitAllNo < 6 :
+            return
         
         list_digitRect = digitRect.split('|')[1:]
         list_digitRect = [ aa.split(',') for aa in list_digitRect]
@@ -42,7 +47,7 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit):
 
 
 
-def makeImageFolder(folder_json, folder_digit):
+def makeImageFolder(folder_json, folder_digit, digit_type = 'all'):
     try:
         if not os.path.isdir(folder_digit) :
             os.mkdir(folder_digit)
@@ -64,7 +69,7 @@ def makeImageFolder(folder_json, folder_digit):
     
     for file_json in list_json:
         file_bmp = os.path.splitext(file_json)[0] + '.bmp'
-        extractDigit_saveto(file_json, file_bmp, list_dir_digit)
+        extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type)
         
 
 def makeTrainValidFromDigitClass(dir_digit_class, dir_train, dir_valid, train_ratio=0.8):
@@ -146,12 +151,12 @@ def imageAugmentation(dir_in, dir_out):
         A.HueSaturationValue(),
         A.GaussNoise(),
         A.MotionBlur(p=.2),
-        A.RandomBrightnessContrast(p=0.05),
-        A.InvertImg(),
-        A.ISONoise(),
-        A.RandomFog(),
-        # A.RandomRain(),
-        # A.RandomSnow()
+        A.RandomBrightnessContrast(p=0.9),
+        # A.InvertImg(),        # Not Accepted
+        # A.ISONoise(),        # Not Accepted
+        # A.RandomFog(),                  # Not Accepted
+        # # A.RandomRain(),      # Not Accepted
+        # # A.RandomSnow()      # Not Accepted
     ]
     list_aug_name = [
         'CLAHE',
@@ -161,34 +166,34 @@ def imageAugmentation(dir_in, dir_out):
         'GaussNoise',
         'MotionBlur',
         'RandomBright',
-        'InvertImg',
-        'IsoNoise',
-        'RandomFog',
-        # 'RandomRain',
-        # 'RandomSnow'
+        # 'InvertImg',
+        # 'IsoNoise',
+        # 'RandomFog',
+        # # 'RandomRain',
+        # # 'RandomSnow'
     ]
 
     list_aa = [
-        # iaa.MedianBlur(k=(3, 11)),
-        iaa.Dropout((0.05, 0.06), per_channel=0.5),
-        iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),
+        # iaa.MedianBlur(k=(3, 11)),      # Not Accepted
+        # iaa.Dropout((0.05, 0.06), per_channel=0.5),      # Not Accepted
+        # iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),      # Not Accepted
         iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5),
-        # iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),
+        # iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),      # Not Accepted
         iaa.PiecewiseAffine(scale=(0.01, 0.02)),
         iaa.EdgeDetect(alpha=0.3),
-        iaa.Sharpen(alpha=(0.0, 1.0)),
-        iaa.DirectedEdgeDetect(alpha=0.5, direction=0),
+        # iaa.Sharpen(alpha=(0.0, 1.0)),      # Not Accepted
+        # iaa.DirectedEdgeDetect(alpha=0.5, direction=0),      # Not Accepted
     ]
     list_aa_name = [
         # 'MedianBlur',
-        'Dropout',
-        'Emboss',
+        # 'Dropout',
+        # 'Emboss',
         'AdditiveGaussianNoise',
         # 'ElasticTransformation',
         'PiecewiseAffine',
         'EdgeDetect',
-        'Sharpen',
-        'DirectedEdgeDetect',
+        # 'Sharpen',
+        # 'DirectedEdgeDetect',
     ]
     
     
@@ -249,7 +254,7 @@ def get_Image_Value_List_from_json(file_json):
     
 if __name__ == '__main__' :
     # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
-    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class')
+    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class', 'digit_all')    # digit_7, digit_normal, digit_all
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples_temp', r'.\digit_class')
     
     # Image Augment을 위해  input dir을 지정해 주면, output dir에  이미지 증강 시켜 저장한다.

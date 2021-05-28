@@ -22,6 +22,8 @@ from makeImageFolder import get_Image_Value_List_from_json
 import random
 from PIL import Image
 
+import cv2
+
 is_cuda = None
 optimizer = None
 
@@ -103,6 +105,7 @@ def fit_numpy(epoch, model, data_loader, phase='training', volatile=False):
     running_loss = 0.0
     running_correct = 0
     for batch_idx, (data, target) in enumerate(data_loader):
+        print(f'batch_idx:{batch_idx}')
         if is_cuda:
             data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile), Variable(target)
@@ -126,12 +129,48 @@ def fit_numpy(epoch, model, data_loader, phase='training', volatile=False):
         f'epoch:{epoch}, {phase} loss is {loss:{5}.{2}} and {phase} accuracy is {running_correct}/{len(data_loader.dataset)}{accuracy:{10}.{4}}')
     return loss, accuracy
 
+class   ReduceChannel(object):
+    def __init__(self):
+        pass
 
-train_transform = transforms.Compose([transforms.Resize((224, 224))
-                                         , transforms.RandomRotation(0.2)
+    def __call__(self, sample):
+        fig = plt.figure()
+        rows = 1
+        cols = 3
+        ax1 = fig.add_subplot(rows, cols, 1)
+        ax1.imshow(sample)
+        ax1.set_title('before')
+        ax1.axis("off")
+
+
+
+        opencvImage = cv2.cvtColor(np.array(sample), cv2.COLOR_RGB2GRAY)
+
+        ax3 = fig.add_subplot(rows, cols, 3)
+        ax3.hist(opencvImage.ravel(), 256, [0,256])
+        ax3.set_title('before')
+        ax3.axis("off")
+
+        ret, thresh = cv2.threshold(opencvImage, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        img = cv2.cvtColor(thresh, cv2.COLOR_GRAY2RGB)
+
+        ax2 = fig.add_subplot(rows, cols, 2)
+        ax2.imshow(img)
+        ax2.set_title('after')
+        ax2.axis("off")
+        plt.show()
+        plt.close()
+
+        im_pil = Image.fromarray(img)
+
+        return im_pil
+
+train_transform = transforms.Compose([transforms.Resize((56, 56))
+                                      ,ReduceChannel()
+                                         # , transforms.RandomRotation(0.2)
                                       # , transforms.ColorJitter(brightness=0.1)
                                          , transforms.ToTensor()
-                                         , transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                                         , transforms.Normalize([0.485], [0.229])
                                       ])
 
 
@@ -291,14 +330,14 @@ def getValueFromJson(file_json, model_path_load):
 if __name__ == '__main__':
     time_start = time.time()
     # 처음 학습시킬때.
-    # loss, acc = DigitRecogModel(r'.\digit_class_aug', dropout=0.2, phase='training', model_path_load=None,
-    #                             model_path_save=r'./model_wresnet101.pt')
-    # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
-    
-    # 기존학습에 추가 학습시킬때.
-    loss, acc = DigitRecogModel(r'.\digit_class_aug', dropout=0.2, phase='training', model_path_load=r'./model_wresnet101.pt',
+    loss, acc = DigitRecogModel(r'.\digit_class', dropout=0.2, phase='training', model_path_load=None,
                                 model_path_save=r'./model_wresnet101.pt')
     print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
+    
+    # 기존학습에 추가 학습시킬때.
+    # loss, acc = DigitRecogModel(r'.\digit_class_aug', dropout=0.2, phase='training', model_path_load=r'./model_wresnet101.pt',
+    #                             model_path_save=r'./model_wresnet101.pt')
+    # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
     
     # test할 json을 받아서  예측한 값을 확인.
     print('-------------------------------------------------------------')
