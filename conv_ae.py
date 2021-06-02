@@ -36,7 +36,13 @@ class conv_autoencoder(nn.Module):
     def __init__(self):
         super(conv_autoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 64, 3, stride=1, padding=2),
+            nn.Conv2d(1, 256, 3, stride=1, padding=2),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=1),
+            nn.Conv2d(256, 128, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.MaxPool2d(2, stride=1),
+            nn.Conv2d(128, 64, 3, stride=1, padding=2),
             nn.ReLU(True),
             nn.MaxPool2d(2, stride=1),
             nn.Conv2d(64, 32, 3, stride=1, padding=2),
@@ -56,7 +62,11 @@ class conv_autoencoder(nn.Module):
             nn.ReLU(True),
             nn.ConvTranspose2d(32, 64, 3, stride=1, padding=1),
             nn.ReLU(True),
-            nn.ConvTranspose2d(64, 1, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(64, 128, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(128, 256, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(256, 1, 3, stride=1, padding=1),
             nn.Tanh()
         )
     
@@ -97,13 +107,19 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
     is_cuda = False
     if torch.cuda.is_available():
         is_cuda = True
+        dev = torch.device('cuda')
+    else:
+        dev = torch.device('cpu')
 
-    model = conv_autoencoder()
-    if is_cuda == True:
-        model.cuda()
-        image_ref, index_ref = image_ref.cuda(), index_ref.cuda()
-        image_ref, index_ref = Variable(image_ref), Variable(index_ref)
 
+    if model_path_load == None :
+        model = conv_autoencoder()
+        if is_cuda == True:
+            model.cuda()
+            image_ref, index_ref = image_ref.cuda(), index_ref.cuda()
+            image_ref, index_ref = Variable(image_ref), Variable(index_ref)
+    else:
+        model = torch.load(model_path_load, map_location=dev)
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
@@ -113,28 +129,9 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
             # 성능이 향상이 없을 때 learning rate를 감소시킨다.  optimizer에 momentum을 설정해야 사용할 수 있다
-
-    
-    if model_path_load != None and os.path.isfile(model_path_load):
-        if is_cuda == True:
-            dev = torch.device('cuda')
-        else:
-            dev = torch.device('cpu')
-    
-        print(f'load from {model_path_load}')
-        checkpoint = torch.load(model_path_load, map_location=dev)
-        if checkpoint.get('model_state_dict', None) != None :
-            model.load_state_dict(checkpoint['model_state_dict'])
-
-        if checkpoint.get('optimizer_state_dict', None) != None:
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            
-        if checkpoint.get('scheduler_state_dict', None) != None:
-            scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     
     criterion = nn.MSELoss()
-
-    
+    total_loss_prev = 10000
     for epoch in range(number_epochs):
         total_loss = 0.0
         for data in data_loader:
@@ -156,42 +153,29 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
         scheduler.step(total_loss)
         # Print results
         print('epoch [{}/{}], loss:{:.4f}'.format(epoch + 1, number_epochs, total_loss.data))
-        if (epoch + 1 )  % 10 == 0:
-            print(index)
+        if epoch > 20 and ( total_loss < total_loss_prev) and ( model_path_save != None) :
+
             pic = to_image(output.cpu().data)
             save_image(pic, './dc_img/img_{:04d}_out.png'.format(epoch))
 
             pic = to_image(img.cpu().data)
             save_image(pic, './dc_img/img_{:04d}_in.png'.format(epoch))
 
-            torch.save({
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict(),
-            }, model_path_save)
+            torch.save(model, model_path_save)
+            total_loss_prev = total_loss
+            print('model saved')
 
 
-def get_images_from_model_eval(imgs, model_path_load=r'./conv_ae7.pt'):
+def get_images_from_model_eval(imgs, model_path_load=r'./conv_ae_7seg.pt'):
 
     is_cuda = False
     if torch.cuda.is_available():
         is_cuda = True
+        dev = torch.device('cuda')
+    else:
+        dev = torch.device('cpu')
 
-    model = conv_autoencoder()
-    if is_cuda == True:
-        model.cuda()
-
-    if model_path_load != None and os.path.isfile(model_path_load):
-        if is_cuda == True:
-            dev = torch.device('cuda')
-        else:
-            dev = torch.device('cpu')
-
-        print(f'load from {model_path_load}')
-        checkpoint = torch.load(model_path_load, map_location=dev)
-        if checkpoint.get('model_state_dict', None) != None:
-            model.load_state_dict(checkpoint['model_state_dict'])
-
+    model = torch.load(model_path_load, map_location=dev)
     model.eval()
     if is_cuda == True:
         imgs = imgs.cuda()
@@ -203,7 +187,7 @@ def get_images_from_model_eval(imgs, model_path_load=r'./conv_ae7.pt'):
     return output
 
 
-def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_path_load=r'./conv_ae7.pt' ):
+def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_path_load=r'./conv_ae_7seg.pt' ):
     try:
         if not os.path.isdir(dir_autoencoder):
             os.mkdir(dir_autoencoder)
@@ -230,21 +214,11 @@ def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_p
     is_cuda = False
     if torch.cuda.is_available():
         is_cuda = True
+        dev = torch.device('cuda')
+    else:
+        dev = torch.device('cpu')
 
-    model = conv_autoencoder()
-    if is_cuda == True:
-        model.cuda()
-
-    if model_path_load != None and os.path.isfile(model_path_load):
-        if is_cuda == True:
-            dev = torch.device('cuda')
-        else:
-            dev = torch.device('cpu')
-    
-        print(f'load from {model_path_load}')
-        checkpoint = torch.load(model_path_load, map_location=dev)
-        if checkpoint.get('model_state_dict', None) != None:
-            model.load_state_dict(checkpoint['model_state_dict'])
+    model = torch.load(model_path_load, map_location=dev)
 
     for loop, data in enumerate(data_loader):
         img, index = data
@@ -268,12 +242,12 @@ def save_encoder_image(output, loop, indices, list_dir_digit):
 if __name__ == '__main__':
     time_start = time.time()
     # 4,5 digit인 7 segment 인 경우.
-    # conv_autoencoder_model(r'.\digit_class_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae7.pt', model_path_save=r'./conv_ae7.pt')
-    # make_autoencoder_digit_from_class( r'.\digit_class_aug', r'.\digit_class_aug_autoencoder7', model_path_load=r'./conv_ae7.pt' )
+    # conv_autoencoder_model(r'.\digit_class_7seg_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae7.pt', model_path_save=r'./conv_ae_7seg.pt')
+    # make_autoencoder_digit_from_class( r'.\digit_class_7seg_aug', r'.\digit_class_7seg_aug_autoencoder', model_path_load=r'./conv_ae_7seg.pt' )
 
 
     # 8 digit인  normal segment 인 경우.
-    # conv_autoencoder_model(r'.\digit_class_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae_normal.pt', model_path_save=r'./conv_ae_normal.pt')
-    # make_autoencoder_digit_from_class( r'.\digit_class_aug', r'.\digit_class_aug_autoencoder', model_path_load=r'./conv_ae_normal.pt' )
+    # conv_autoencoder_model(r'.\digit_class_normal_aug', r'.\digit_class_ref', model_path_load=None, model_path_save=r'./conv_ae_normal.pt')
+    make_autoencoder_digit_from_class( r'.\digit_class_normal_aug', r'.\digit_class_normal_aug_autoencoder', model_path_load=r'./conv_ae_normal.pt' )
 
     print(f'elapsed time sec  : {time.time() - time_start}')

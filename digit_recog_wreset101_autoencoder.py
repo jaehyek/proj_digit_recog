@@ -172,12 +172,6 @@ def DigitRecogModel(dir_train, phase='training', model_path_load=None, model_pat
     train = ImageFolder(dir_train, train_transform)
     train_data_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
 
-    # train_data_loader = torch.utils.data.DataLoader(train, batch_size=1, shuffle=True)
-    # for i, (data, target) in enumerate( train_data_loader) :
-    #     imsave(data[0], os.path.join('test', str(target[0].tolist()) + '_' + str(i) + '.jpg'))
-    #
-    # exit()
-
     if model_path_load == None:
         resnet = models.wide_resnet101_2(pretrained=False)
         resnet.fc = nn.Linear(in_features=2048, out_features=10, bias=True)
@@ -235,13 +229,6 @@ class DigitGaugeDataset(Dataset):
 
 
 def getValueFromJson(file_json, model_path_load):
-    global is_cuda, optimizer, train_transform
-    is_cuda = False
-    if torch.cuda.is_available():
-        is_cuda = True
-        dev = torch.device('cuda')
-    else:
-        dev = torch.device('cpu')
 
     gaugedataset = DigitGaugeDataset(file_json, conv_ae.transform_image)
     len_digit = len(gaugedataset)
@@ -250,15 +237,15 @@ def getValueFromJson(file_json, model_path_load):
     data, target = next(iter(gauge_data_loader))
 
     if len(target) < 6  :
-        ae_model_path_load = r'./conv_ae7.pt'
-        # resnet_model_path_load = 'model_wresnet101_auto7.pt'
-        resnet_model_path_load = 'model_wresnet101_auto_all.pt'
+        ae_model_path_load = r'./conv_ae_7seg.pt'
+        resnet_model_path_load = r'./model_wresnet101_auto7.pt'
+        # resnet_model_path_load = 'model_wresnet101_auto_all.pt'
     else:
-        ae_model_path_load = r'./conv_ae_normal.pt'
-        # resnet_model_path_load = 'model_wresnet101_auto_normal.pt'
-        resnet_model_path_load = 'model_wresnet101_auto_all.pt'
+        ae_model_path_load = './conv_ae_normal.pt'
+        resnet_model_path_load = r'./model_wresnet101_auto_normal.pt'
+        # resnet_model_path_load = 'model_wresnet101_auto_all.pt'
 
-    data = conv_ae.get_images_from_model_eval(data, ae_model_path_load)
+    data = conv_ae.get_images_from_model_eval(data,ae_model_path_load)
 
     data = data.to(torch.device('cpu'))
     data = conv_ae.to_image(data)
@@ -270,6 +257,12 @@ def getValueFromJson(file_json, model_path_load):
     data = transforms.Resize((56, 56))(data)
     data = transforms.Normalize([0.485], [0.229])(data)
 
+    is_cuda = False
+    if torch.cuda.is_available():
+        is_cuda = True
+        dev = torch.device('cuda')
+    else:
+        dev = torch.device('cpu')
 
     resnet = torch.load(resnet_model_path_load, map_location=dev)
 
@@ -302,64 +295,62 @@ def getValueFromJson(file_json, model_path_load):
 if __name__ == '__main__':
     time_start = time.time()
     # 처음 학습시킬때.
-    # loss, acc = DigitRecogModel(r'.\digit_class_aug_autoencoder_all', phase='training', model_path_load=None, model_path_save=r'./model_wresnet101_auto_all.pt')
+    # loss, acc = DigitRecogModel(r'.\digit_class_7seg_aug_autoencoder', phase='training', model_path_load=None, model_path_save=r'./model_wresnet101_auto_7seg.pt')
+    # loss, acc = DigitRecogModel(r'.\digit_class_normal_aug_autoencoder', phase='training', model_path_load=None, model_path_save=r'./model_wresnet101_auto_normal.pt')
+    # loss, acc = DigitRecogModel(r'.\digit_class_all_aug_autoencoder', phase='training', model_path_load=None, model_path_save=r'./model_wresnet101_auto_all.pt')
     # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
 
-    # 기존학습에 추가 학습시킬때.
-    # loss, acc = DigitRecogModel(r'.\digit_class_aug', dropout=0.2, phase='training', model_path_load=r'./model_wresnet101_auto7.pt',
-    #                             model_path_save=r'./model_wresnet101_auto7.pt')
-    # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
 
     # test할 json을 받아서  예측한 값을 확인.
     # print('-------------------------------------------------------------')
     ###################################################### 4-5자리 7segment digit인 경우 #########################################
-    getValueFromJson(r'D:\proj_gauge\민성기\digit_test\10050-56359.json', model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digit_test\10060-56385.json', model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56265.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56266.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56267.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56268.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56340.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56341.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56342.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56343.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56344.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56345.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56346.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56347.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56348.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56349.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56350.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56351.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56352.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56353.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56354.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56355.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56356.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56357.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56358.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56370.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56371.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56372.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56373.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56374.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56375.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56376.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56377.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56378.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56379.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56380.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56381.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56383.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56384.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56386.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56387.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56388.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56389.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56390.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56391.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56392.json',model_path_load=r'./model_wresnet101_auto7.pt')
-    getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56393.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digit_test\10050-56359.json', model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digit_test\10060-56385.json', model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56265.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56266.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56267.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56268.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56340.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56341.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56342.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56343.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56344.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56345.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56346.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56347.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56348.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56349.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56350.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56351.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56352.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56353.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56354.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56355.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56356.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56357.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56358.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56370.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56371.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56372.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56373.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56374.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56375.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56376.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56377.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56378.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56379.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56380.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56381.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10050-56383.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56384.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56386.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56387.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56388.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56389.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56390.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56391.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56392.json',model_path_load=r'./model_wresnet101_auto7.pt')
+    # getValueFromJson(r'D:\proj_gauge\민성기\digitGaugeSamples\10060-56393.json',model_path_load=r'./model_wresnet101_auto7.pt')
 
     ###################################################### 8자리 normal digit인 경우 #########################################
     getValueFromJson(r'D:\proj_gauge\민성기\digit_test\10060-56394.json', model_path_load=r'./model_wresnet101_auto7.pt')  # 8자리 digit 시작
