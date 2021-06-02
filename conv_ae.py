@@ -79,7 +79,7 @@ def make_ref_image(image_ref, index) :
 
 def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, model_path_save=None):
     
-    number_epochs = 5000
+    number_epochs = 1000
     batch_size = 10
     learning_rate = 0.0001
 
@@ -103,9 +103,17 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
         model.cuda()
         image_ref, index_ref = image_ref.cuda(), index_ref.cuda()
         image_ref, index_ref = Variable(image_ref), Variable(index_ref)
-    
+
+
+    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
+    #         # 성능이 향상이 없을 때 learning rate를 감소시킨다.  optimizer에 momentum을 설정해야 사용할 수 있다
+
+
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
+            # 성능이 향상이 없을 때 learning rate를 감소시킨다.  optimizer에 momentum을 설정해야 사용할 수 있다
+
     
     if model_path_load != None and os.path.isfile(model_path_load):
         if is_cuda == True:
@@ -148,22 +156,54 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
         scheduler.step(total_loss)
         # Print results
         print('epoch [{}/{}], loss:{:.4f}'.format(epoch + 1, number_epochs, total_loss.data))
-        if epoch % 10 == 0:
+        if (epoch + 1 )  % 10 == 0:
             print(index)
             pic = to_image(output.cpu().data)
             save_image(pic, './dc_img/img_{:04d}_out.png'.format(epoch))
 
             pic = to_image(img.cpu().data)
             save_image(pic, './dc_img/img_{:04d}_in.png'.format(epoch))
-            
-    
-    torch.save({
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'scheduler_state_dict': scheduler.state_dict(),
-    }, model_path_save)
 
-def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_path_load=r'./conv_ae.pt' ):
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+            }, model_path_save)
+
+
+def get_images_from_model_eval(imgs, model_path_load=r'./conv_ae7.pt'):
+
+    is_cuda = False
+    if torch.cuda.is_available():
+        is_cuda = True
+
+    model = conv_autoencoder()
+    if is_cuda == True:
+        model.cuda()
+
+    if model_path_load != None and os.path.isfile(model_path_load):
+        if is_cuda == True:
+            dev = torch.device('cuda')
+        else:
+            dev = torch.device('cpu')
+
+        print(f'load from {model_path_load}')
+        checkpoint = torch.load(model_path_load, map_location=dev)
+        if checkpoint.get('model_state_dict', None) != None:
+            model.load_state_dict(checkpoint['model_state_dict'])
+
+    model.eval()
+    if is_cuda == True:
+        imgs = imgs.cuda()
+    imgs = Variable(imgs)
+
+
+    with torch.no_grad():
+        output = model(imgs)
+    return output
+
+
+def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_path_load=r'./conv_ae7.pt' ):
     try:
         if not os.path.isdir(dir_autoencoder):
             os.mkdir(dir_autoencoder)
@@ -227,7 +267,13 @@ def save_encoder_image(output, loop, indices, list_dir_digit):
 
 if __name__ == '__main__':
     time_start = time.time()
-    conv_autoencoder_model(r'.\digit_class_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae.pt', model_path_save=r'./conv_ae.pt')
-    
-    make_autoencoder_digit_from_class( r'.\digit_class_aug', r'.\digit_class_autoencoder', model_path_load=r'./conv_ae.pt' )
+    # 4,5 digit인 7 segment 인 경우.
+    # conv_autoencoder_model(r'.\digit_class_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae7.pt', model_path_save=r'./conv_ae7.pt')
+    # make_autoencoder_digit_from_class( r'.\digit_class_aug', r'.\digit_class_aug_autoencoder7', model_path_load=r'./conv_ae7.pt' )
+
+
+    # 8 digit인  normal segment 인 경우.
+    # conv_autoencoder_model(r'.\digit_class_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae_normal.pt', model_path_save=r'./conv_ae_normal.pt')
+    # make_autoencoder_digit_from_class( r'.\digit_class_aug', r'.\digit_class_aug_autoencoder', model_path_load=r'./conv_ae_normal.pt' )
+
     print(f'elapsed time sec  : {time.time() - time_start}')

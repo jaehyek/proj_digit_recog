@@ -147,11 +147,11 @@ def imageAugmentation(dir_in, dir_out):
     list_aug = [
         A.CLAHE(),
         A.OpticalDistortion(),
-        A.GridDistortion(),
-        A.HueSaturationValue(),
+        # A.GridDistortion(),
+        # A.HueSaturationValue(),
         A.GaussNoise(),
         A.MotionBlur(p=.2),
-        A.RandomBrightnessContrast(p=0.9),
+        A.RandomBrightnessContrast(p=0.1),
         # A.InvertImg(),        # Not Accepted
         # A.ISONoise(),        # Not Accepted
         # A.RandomFog(),                  # Not Accepted
@@ -161,8 +161,8 @@ def imageAugmentation(dir_in, dir_out):
     list_aug_name = [
         'CLAHE',
         'OpticalDist',
-        'GridDist',
-        'HueSat',
+        # 'GridDist',
+        # 'HueSat',
         'GaussNoise',
         'MotionBlur',
         'RandomBright',
@@ -254,7 +254,7 @@ def get_Image_Value_List_from_json(file_json):
     
 if __name__ == '__main__' :
     # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class', 'digit_all')    # digit_7, digit_normal, digit_all
+    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class', 'digit_normal')    # digit_7, digit_normal, digit_all
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples_temp', r'.\digit_class')
     
     # Image Augment을 위해  input dir을 지정해 주면, output dir에  이미지 증강 시켜 저장한다.
@@ -263,7 +263,8 @@ if __name__ == '__main__' :
     
     
     # 분류된 input dir을 지정해 주면,    지정한 train dir에,  지정한 valid dir에   비율대로, 이미지를 분산 저장한다.
-    makeTrainValidFromDigitClass(r'.\digit_class_aug', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
+    # makeTrainValidFromDigitClass(r'.\digit_class_aug', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
     # makeTrainValidFromDigitClass(r'.\digit_class', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
 
+    print('job done')
 
