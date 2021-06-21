@@ -12,6 +12,7 @@ import torch.nn.functional as F
 import warnings
 import time
 from torchvision.datasets import ImageFolder
+import numpy as np
 
 warnings.filterwarnings("ignore")
 
@@ -21,6 +22,7 @@ class ReduceChannel(object):
         pass
 
     def __call__(self, sample):
+
         a = sample[0]
         b = a.reshape((1,) + a.shape)
         return b
@@ -35,44 +37,104 @@ def to_image(x):
 class conv_autoencoder(nn.Module):
     def __init__(self):
         super(conv_autoencoder, self).__init__()
-        self.encoder = nn.Sequential(
-            nn.Conv2d(1, 256, 3, stride=1, padding=2),
-            nn.ReLU(True),
+        # self.conv = nn.Conv2d(1, 64, 3, stride=1, padding=2)
+        # self.relu = nn.ReLU(True)
+        # self.maxpool = nn.MaxPool2d(2, stride=1)
+        self.encoder1 = nn.Sequential(
+            nn.Conv2d(1, 64, 3, stride=1, padding=2),
             nn.MaxPool2d(2, stride=1),
-            nn.Conv2d(256, 128, 3, stride=1, padding=1),
             nn.ReLU(True),
-            nn.MaxPool2d(2, stride=1),
-            nn.Conv2d(128, 64, 3, stride=1, padding=2),
-            nn.ReLU(True),
-            nn.MaxPool2d(2, stride=1),
             nn.Conv2d(64, 32, 3, stride=1, padding=2),
-            nn.ReLU(True),
             nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True),
             nn.Conv2d(32, 16, 3, stride=1, padding=1),
-            nn.ReLU(True),
             nn.MaxPool2d(2, stride=1),
-            nn.Conv2d(16, 8, 3, stride=1, padding=1),
             nn.ReLU(True),
-            nn.MaxPool2d(2, stride=1)
+            nn.Conv2d(16, 8, 3, stride=1, padding=1),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True)
+
         )
-        self.decoder = nn.Sequential(
+        self.decoder1 = nn.Sequential(
             nn.ConvTranspose2d(8, 16, 3, stride=1, padding=1),
             nn.ReLU(True),
             nn.ConvTranspose2d(16, 32, 3, stride=1, padding=1),
             nn.ReLU(True),
             nn.ConvTranspose2d(32, 64, 3, stride=1, padding=1),
             nn.ReLU(True),
-            nn.ConvTranspose2d(64, 128, 3, stride=1, padding=1),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 256, 3, stride=1, padding=1),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(256, 1, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(64, 1, 3, stride=1, padding=1),
             nn.Tanh()
         )
+
+        self.encoder2 = nn.Sequential(
+            nn.Conv2d(1, 64, 3, stride=1, padding=2),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True),
+            nn.Conv2d(64, 32, 3, stride=1, padding=2),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True),
+            nn.Conv2d(32, 16, 3, stride=1, padding=1),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True),
+            nn.Conv2d(16, 8, 3, stride=1, padding=1),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True)
+        )
+        self.decoder2 = nn.Sequential(
+            nn.ConvTranspose2d(8, 16, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(16, 32, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(32, 64, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, 1, 3, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+        self.encoder3 = nn.Sequential(
+            nn.Conv2d(1, 64, 3, stride=1, padding=2),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True),
+            nn.Conv2d(64, 32, 3, stride=1, padding=2),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True),
+            nn.Conv2d(32, 16, 3, stride=1, padding=1),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True),
+            nn.Conv2d(16, 8, 3, stride=1, padding=1),
+            nn.MaxPool2d(2, stride=1),
+            nn.ReLU(True)
+        )
+        self.decoder3 = nn.Sequential(
+            nn.ConvTranspose2d(8, 16, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(16, 32, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(32, 64, 3, stride=1, padding=1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, 1, 3, stride=1, padding=1),
+            nn.Tanh()
+        )
+
+    def unique_count(self, x):
+        y = x.detach().cpu().numpy()
+        uniques, counts = np.unique(y > 0., return_counts=True)
+        print(dict(zip(uniques, counts)))
     
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
+        # self.unique_count(x)
+        # x = self.conv(x)
+        # self.unique_count(x)
+        # x = self.relu(x)
+        # self.unique_count(x)
+        # x = self.maxpool(x)
+        # self.unique_count(x)
+        x = self.encoder1(x)
+        x = self.decoder1(x)
+        x = self.encoder2(x)
+        x = self.decoder2(x)
+        x = self.encoder3(x)
+        x = self.decoder3(x)
         return x
 
 transform_image = transforms.Compose([
@@ -87,9 +149,9 @@ def make_ref_image(image_ref, index) :
     image_ref_new = torch.stack(list_image, axis = 0)
     return image_ref_new
 
-def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, model_path_save=None):
+def train_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, model_path_save=None):
     
-    number_epochs = 1000
+    number_epochs = 150
     batch_size = 10
     learning_rate = 0.0001
 
@@ -108,18 +170,19 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
     if torch.cuda.is_available():
         is_cuda = True
         dev = torch.device('cuda')
+        model = conv_autoencoder().cuda()
     else:
         dev = torch.device('cpu')
-
-
-    if model_path_load == None :
         model = conv_autoencoder()
-        if is_cuda == True:
-            model.cuda()
-            image_ref, index_ref = image_ref.cuda(), index_ref.cuda()
-            image_ref, index_ref = Variable(image_ref), Variable(index_ref)
-    else:
-        model = torch.load(model_path_load, map_location=dev)
+
+    if model_path_load != None:
+        model.load_state_dict(torch.load(model_path_load, map_location=dev))
+
+    if is_cuda == True:
+        image_ref, index_ref = image_ref.cuda(), index_ref.cuda()
+        image_ref, index_ref = Variable(image_ref), Variable(index_ref)
+
+
 
     # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
@@ -127,9 +190,8 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
 
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
-            # 성능이 향상이 없을 때 learning rate를 감소시킨다.  optimizer에 momentum을 설정해야 사용할 수 있다
-    
+
+    model.train()
     criterion = nn.MSELoss()
     total_loss_prev = 10000
     for epoch in range(number_epochs):
@@ -150,10 +212,10 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        scheduler.step(total_loss)
+
         # Print results
         print('epoch [{}/{}], loss:{:.4f}'.format(epoch + 1, number_epochs, total_loss.data))
-        if epoch > 20 and ( total_loss < total_loss_prev) and ( model_path_save != None) :
+        if epoch > 10 and ( total_loss < total_loss_prev) and ( model_path_save != None) :
 
             pic = to_image(output.cpu().data)
             save_image(pic, './dc_img/img_{:04d}_out.png'.format(epoch))
@@ -161,22 +223,27 @@ def conv_autoencoder_model(dir_class_aug, dir_class_ref, model_path_load=None, m
             pic = to_image(img.cpu().data)
             save_image(pic, './dc_img/img_{:04d}_in.png'.format(epoch))
 
-            torch.save(model, model_path_save)
+            torch.save(model.state_dict(), model_path_save)
             total_loss_prev = total_loss
             print('model saved')
 
 
-def get_images_from_model_eval(imgs, model_path_load=r'./conv_ae_7seg.pt'):
+def get_images_from_model_eval(imgs, model_path_load=r'./conv_ae_7seg.pt', get_model=False):
 
     is_cuda = False
     if torch.cuda.is_available():
         is_cuda = True
         dev = torch.device('cuda')
+        model = conv_autoencoder().cuda()
     else:
         dev = torch.device('cpu')
+        model = conv_autoencoder()
 
-    model = torch.load(model_path_load, map_location=dev)
+    model.load_state_dict(torch.load(model_path_load, map_location=dev))
     model.eval()
+    if get_model == True:
+        return model
+
     if is_cuda == True:
         imgs = imgs.cuda()
     imgs = Variable(imgs)
@@ -187,13 +254,13 @@ def get_images_from_model_eval(imgs, model_path_load=r'./conv_ae_7seg.pt'):
     return output
 
 
-def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_path_load=r'./conv_ae_7seg.pt' ):
+def make_digit_from_autoencoder_model(dir_digit_class, dir_autoencoder, model_path_load=r'./conv_ae_7seg.pt'):
     try:
         if not os.path.isdir(dir_autoencoder):
             os.mkdir(dir_autoencoder)
     except:
         pass
-    
+
     # create dir for 0, 1, 2, ..., 9
     list_dir_digit = []
     for num in range(10):
@@ -201,7 +268,7 @@ def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_p
             dir_digit = os.path.join(dir_autoencoder, f'{num}')
             list_dir_digit.append(dir_digit)
             os.mkdir(dir_digit)
-        
+
         except:
             continue
 
@@ -215,10 +282,13 @@ def make_autoencoder_digit_from_class( dir_digit_class, dir_autoencoder, model_p
     if torch.cuda.is_available():
         is_cuda = True
         dev = torch.device('cuda')
+        model = conv_autoencoder().cuda()
     else:
         dev = torch.device('cpu')
+        model = conv_autoencoder()
 
-    model = torch.load(model_path_load, map_location=dev)
+    model.load_state_dict(torch.load(model_path_load, map_location=dev))
+    model.eval()
 
     for loop, data in enumerate(data_loader):
         img, index = data
@@ -241,13 +311,17 @@ def save_encoder_image(output, loop, indices, list_dir_digit):
 
 if __name__ == '__main__':
     time_start = time.time()
+
+
     # 4,5 digit인 7 segment 인 경우.
-    # conv_autoencoder_model(r'.\digit_class_7seg_aug', r'.\digit_class_ref', model_path_load=r'./conv_ae7.pt', model_path_save=r'./conv_ae_7seg.pt')
-    # make_autoencoder_digit_from_class( r'.\digit_class_7seg_aug', r'.\digit_class_7seg_aug_autoencoder', model_path_load=r'./conv_ae_7seg.pt' )
+    # train_autoencoder_model(r'.\digit_class_7seg_aug', r'.\digit_class_ref_7seg', model_path_load=None, model_path_save=r'./conv_ae_7seg.pt')
+    # make_digit_from_autoencoder_model( r'.\digit_class_7seg_aug', r'.\digit_class_7seg_aug_autoencoder', model_path_load=r'./conv_ae_7seg.pt' )
 
+    # autoencorder 역활은  noise가 많은  숫자 이미지를   noise가 없는  새로운  숫자이미지로  재 생성하도록 한다. ( 인식률을 높이기 위해서 )
 
+    # 2 단계:  autoencorder을  훈련시키고,    autoencorder가 출력하는 image을 모은다.  resnet에서 훈련시키기 위해서. ( error가 더 이상 작아지지 않는다고 판단이 되면  멈춘다. )
     # 8 digit인  normal segment 인 경우.
-    # conv_autoencoder_model(r'.\digit_class_normal_aug', r'.\digit_class_ref', model_path_load=None, model_path_save=r'./conv_ae_normal.pt')
-    make_autoencoder_digit_from_class( r'.\digit_class_normal_aug', r'.\digit_class_normal_aug_autoencoder', model_path_load=r'./conv_ae_normal.pt' )
+    train_autoencoder_model(r'.\digit_class_normal_aug', r'.\digit_class_ref_normal', model_path_load=None, model_path_save=r'./conv_ae_normal.pt')
+    make_digit_from_autoencoder_model(r'.\digit_class_normal_aug', r'.\digit_class_normal_aug_autoencoder', model_path_load=r'./conv_ae_normal.pt')
 
     print(f'elapsed time sec  : {time.time() - time_start}')

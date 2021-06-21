@@ -10,8 +10,10 @@ import numpy as np
 import albumentations as A
 import random
 from imgaug import augmenters as iaa
+import imgaug as ia
+import torchvision.transforms.functional as TF
 
-# https://github.com/albumentations-team/albumentations
+from PIL import Image
 
 def saveimage(sub,dir_digit, basename ):
     filename_jpg = os.path.join(dir_digit, basename + '.jpg')
@@ -133,7 +135,17 @@ def imageread(file_in):
     img_array = np.fromfile(file_in, np.uint8)
     image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
     return image
-            
+
+class MyRotationTransform:
+    """Rotate by one of the given angles."""
+
+    def __init__(self, angles):
+        self.angles = angles
+
+    def __call__(self, x):
+        angle = random.choice(self.angles)
+        return TF.rotate(x, angle)
+
 def imageAugmentation(dir_in, dir_out):
     random.seed(42)
     try:
@@ -143,7 +155,8 @@ def imageAugmentation(dir_in, dir_out):
         pass
 
     list_jpg = glob(dir_in + r"\**\*.jpg", recursive=True)
-    
+
+    ## https://github.com/albumentations-team/albumentations
     list_aug = [
         A.CLAHE(),
         A.OpticalDistortion(),
@@ -157,6 +170,7 @@ def imageAugmentation(dir_in, dir_out):
         # A.RandomFog(),                  # Not Accepted
         # # A.RandomRain(),      # Not Accepted
         # # A.RandomSnow()      # Not Accepted
+
     ]
     list_aug_name = [
         'CLAHE',
@@ -170,30 +184,139 @@ def imageAugmentation(dir_in, dir_out):
         # 'IsoNoise',
         # 'RandomFog',
         # # 'RandomRain',
-        # # 'RandomSnow'
+        # # 'RandomSnow',
+
     ]
+
+    ## https://github.com/aleju/imgaug
 
     list_aa = [
         # iaa.MedianBlur(k=(3, 11)),      # Not Accepted
         # iaa.Dropout((0.05, 0.06), per_channel=0.5),      # Not Accepted
         # iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)),      # Not Accepted
         iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5),
-        # iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25),      # Not Accepted
-        iaa.PiecewiseAffine(scale=(0.01, 0.02)),
+        iaa.ElasticTransformation(alpha=8.2, sigma=4.0),
+        # iaa.ElasticTransformation(alpha=15.5, sigma=4.0),
+        # iaa.ElasticTransformation(alpha=22.8, sigma=4.0),
+        iaa.PiecewiseAffine(scale=0.015),
+        iaa.PiecewiseAffine(scale=0.030),
+        iaa.PiecewiseAffine(scale=0.045),
+        # iaa.PiecewiseAffine(scale=0.060),
+        # iaa.PiecewiseAffine(scale=0.075),
         iaa.EdgeDetect(alpha=0.3),
         # iaa.Sharpen(alpha=(0.0, 1.0)),      # Not Accepted
         # iaa.DirectedEdgeDetect(alpha=0.5, direction=0),      # Not Accepted
+        iaa.Affine(scale=0.8, mode='edge', cval=64 ),
+        iaa.Affine(scale=1.2, mode='edge'),
+        iaa.Affine(rotate=5, cval=64 ),
+        iaa.Affine(rotate=10, cval=64 ),
+        iaa.Affine(rotate=-5, cval=64 ),
+        iaa.Affine(rotate=-10, cval=64 ),
+        iaa.Affine(shear=8, cval=64, mode='edge'),
+        iaa.Affine(shear=-8, cval=64, mode='edge'),
+        iaa.Affine(scale=0.8, rotate=3, mode='edge', cval=64 ),
+        iaa.Affine(scale=0.8, rotate=-3, mode='edge', cval=64),
+        iaa.Affine(scale=1.2, rotate=3, mode='edge', cval=64),
+        iaa.Affine(scale=1.2, rotate=-3, mode='edge', cval=64),
+        iaa.GaussianBlur(sigma=1.0),
+        # iaa.MaxPooling(kernel_size=2, keep_size=True),
+        iaa.Fog(),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(scale=0.8, mode='edge', cval=64 ),]),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(scale=1.2, mode='edge'), ]),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(rotate=5, cval=64 ), ]),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(rotate=10, cval=64), ]),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(rotate=-5, cval=64), ]),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(rotate=-10, cval=64 ), ]),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(shear=8, cval=64, mode='edge'), ]),
+        iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(shear=-8, cval=64, mode='edge'), ]),
+
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(scale=0.8, mode='edge', cval=64), ]),
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(scale=1.2, mode='edge'), ]),
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(rotate=5, cval=64), ]),
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(rotate=10, cval=64), ]),
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(rotate=-5, cval=64), ]),
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(rotate=-10, cval=64), ]),
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(shear=8, cval=64, mode='edge'), ]),
+        # iaa.Sequential([iaa.MaxPooling(2, keep_size=True), iaa.Affine(shear=-8, cval=64, mode='edge'), ]),
+
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(scale=0.8, mode='edge', cval=64), ]),
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(scale=1.2, mode='edge'), ]),
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(rotate=5, cval=64), ]),
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(rotate=10, cval=64), ]),
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(rotate=-5, cval=64), ]),
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(rotate=-10, cval=64), ]),
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(shear=8, cval=64, mode='edge'), ]),
+        # iaa.Sequential([iaa.Fog(), iaa.Affine(shear=-8, cval=64, mode='edge'), ]),
+
+
     ]
     list_aa_name = [
         # 'MedianBlur',
         # 'Dropout',
         # 'Emboss',
         'AdditiveGaussianNoise',
-        # 'ElasticTransformation',
-        'PiecewiseAffine',
+        'ElasticTransformation8',
+        # 'ElasticTransformation15',
+        # 'ElasticTransformation22',
+        'PiecewiseAffine15',
+        'PiecewiseAffine30',
+        'PiecewiseAffine45',
+        # 'PiecewiseAffine60',
+        # 'PiecewiseAffine75',
         'EdgeDetect',
         # 'Sharpen',
         # 'DirectedEdgeDetect',
+        'scale8',
+        'scale12',
+        'rotate5',
+        'rotate10',
+        'rotate_5',
+        'rotate_10',
+        'shear8',
+        'shear_8',
+        'scale8rotate3',
+        'scale8rotate_3',
+        'scale12rotate3',
+        'scale12rotate_3',
+        'GaussianBlur',
+        # 'MaxPooling2',
+        'Fog',
+
+        'GaussianBlurscale8',
+        'GaussianBlurscale12',
+        'GaussianBlurrotate5',
+        'GaussianBlurrotate10',
+        'GaussianBlurrotate_5',
+        'GaussianBlurrotate_10',
+        'GaussianBlurshear8',
+        'GaussianBlurshear_8',
+
+        # 'MaxPooling2scale8',
+        # 'MaxPooling2scale12',
+        # 'MaxPooling2rotate5',
+        # 'MaxPooling2rotate10',
+        # 'MaxPooling2rotate_5',
+        # 'MaxPooling2rotate_10',
+        # 'MaxPooling2shear8',
+        # 'MaxPooling2shear_8',
+
+        # 'Fogscale8',
+        # 'Fogscale12',
+        # 'Fogrotate5',
+        # 'Fogrotate10',
+        # 'Fogrotate_5',
+        # 'Fogrotate_10',
+        # 'Fogshear8',
+        # 'Fogshear_8',
+
+    ]
+
+    list_torch_tf = [
+        MyRotationTransform(angles=[-10, -5, 0, 5, 10]),
+    ]
+
+    list_torch_tf_name = [
+        'Rotate',
     ]
     
     
@@ -215,6 +338,14 @@ def imageAugmentation(dir_in, dir_out):
         for i in range( len(list_aa )) :
             augmented_image = list_aa[i](image=image)
             imagesave(augmented_image, jpg_out_basename + '_' + list_aa_name[i] + '.jpg')
+
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # im_pil = Image.fromarray(image)
+        # for i in range(len(list_torch_tf)):
+        #     augmented_image = list_aa[i](im_pil)
+        #     im_np = np.asarray(augmented_image)
+        #     im_np = cv2.cvtColor(im_np, cv2.COLOR_RGB2BGR)
+        #     imagesave(im_np, jpg_out_basename + '_' + list_torch_tf_name[i] + '.jpg')
 
 
 def extractDigitImage_Value_List(file_json, file_bmp):
@@ -253,18 +384,20 @@ def get_Image_Value_List_from_json(file_json):
     
     
 if __name__ == '__main__' :
+
     # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class', 'digit_normal')    # digit_7, digit_normal, digit_all
-    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples_temp', r'.\digit_class')
-    
-    # Image Augment을 위해  input dir을 지정해 주면, output dir에  이미지 증강 시켜 저장한다.
-    imageAugmentation(r'.\digit_class', r'.\digit_class_aug')
-    # imageAugmentation(r'D:\proj_gauge\test_class', r'D:\proj_gauge\test_class_aug')
-    
-    
-    # 분류된 input dir을 지정해 주면,    지정한 train dir에,  지정한 valid dir에   비율대로, 이미지를 분산 저장한다.
-    # makeTrainValidFromDigitClass(r'.\digit_class_aug', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
-    # makeTrainValidFromDigitClass(r'.\digit_class', r'.\digit_class_train', r'.\digit_class_valid', train_ratio=0.8)
+
+    # 7-segment digit에 대해 처리.
+    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class_7seg', 'digit_7')  # digit_7, digit_normal, digit_all
+    imageAugmentation(r'.\digit_class_7seg', r'.\digit_class_7seg_aug')
+
+
+    # 1단계 . 아래 2가지 처리를 실행한다.
+    # normal digit에 대해 처리.
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class_normal', 'digit_normal')  # digit_7, digit_normal, digit_all
+    # imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
+
+
 
     print('job done')
 
