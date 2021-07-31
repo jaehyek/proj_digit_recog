@@ -220,7 +220,7 @@ def imageAugmentation(dir_in, dir_out):
         iaa.Affine(scale=1.2, rotate=-3, mode='edge', cval=64),
         iaa.GaussianBlur(sigma=1.0),
         # iaa.MaxPooling(kernel_size=2, keep_size=True),
-        iaa.Fog(),
+        # iaa.Fog(),
         iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(scale=0.8, mode='edge', cval=64 ),]),
         iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(scale=1.2, mode='edge'), ]),
         iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(rotate=5, cval=64 ), ]),
@@ -280,7 +280,7 @@ def imageAugmentation(dir_in, dir_out):
         'scale12rotate_3',
         'GaussianBlur',
         # 'MaxPooling2',
-        'Fog',
+        # 'Fog',
 
         'GaussianBlurscale8',
         'GaussianBlurscale12',
@@ -388,14 +388,14 @@ if __name__ == '__main__' :
     # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
 
     # 7-segment digit에 대해 처리.
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class_7seg', 'digit_7')  # digit_7, digit_normal, digit_all
-    imageAugmentation(r'.\digit_class_7seg', r'.\digit_class_7seg_aug')
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples2', r'.\digit_class_4.1seg', 'digit_7')  # digit_7, digit_normal, digit_all
+    # imageAugmentation(r'.\digit_class_7seg', r'.\digit_class_7seg_aug')
 
 
     # 1단계 . 아래 2가지 처리를 실행한다.
     # normal digit에 대해 처리.
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class_normal', 'digit_normal')  # digit_7, digit_normal, digit_all
-    # imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
+    imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
 
 
 
