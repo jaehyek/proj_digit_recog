@@ -45,7 +45,7 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
         for index  in range(digitAllNo) :
             x, y, width, height = list_digitRect[index]
             sub = img.crop((x,y,x+width,y+height))
-            saveimage(sub,list_dir_digit[int(str_dataValue[index])], os.path.basename(file_json).split('.')[0] + f'_{index}' )
+            saveimage(sub,list_dir_digit[int(str_dataValue[index])], os.path.basename(file_json).split('.')[0] + f'_{str_dataValue[index]}' )
 
 
 
@@ -62,7 +62,7 @@ def makeImageFolder(folder_json, folder_digit, digit_type = 'all'):
         try:
             dir_digit = os.path.join(folder_digit, f'{num}')
             list_dir_digit.append(dir_digit)
-            os.mkdir(dir_digit)
+            os.makedirs(dir_digit, exist_ok=True)
             
         except:
             continue
@@ -220,7 +220,7 @@ def imageAugmentation(dir_in, dir_out):
         iaa.Affine(scale=1.2, rotate=-3, mode='edge', cval=64),
         iaa.GaussianBlur(sigma=1.0),
         # iaa.MaxPooling(kernel_size=2, keep_size=True),
-        # iaa.Fog(),
+        # iaa.Fog(seed=1),
         iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(scale=0.8, mode='edge', cval=64 ),]),
         iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(scale=1.2, mode='edge'), ]),
         iaa.Sequential([iaa.GaussianBlur(sigma=1.0), iaa.Affine(rotate=5, cval=64 ), ]),
@@ -388,14 +388,17 @@ if __name__ == '__main__' :
     # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
 
     # 7-segment digit에 대해 처리.
-    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples2', r'.\digit_class_4.1seg', 'digit_7')  # digit_7, digit_normal, digit_all
-    # imageAugmentation(r'.\digit_class_7seg', r'.\digit_class_7seg_aug')
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples2', r'.\digit_class_seg7', 'digit_7')  # digit_7, digit_normal, digit_all
+    # imageAugmentation(r'.\digit_class_seg7', r'.\digit_class_seg7_aug')
 
 
     # 1단계 . 아래 2가지 처리를 실행한다.
     # normal digit에 대해 처리.
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class_normal', 'digit_normal')  # digit_7, digit_normal, digit_all
-    imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
+    # imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
+
+    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples2', r'.\digit_class_samp2', 'all')  # digit_7, digit_normal, digit_all
+    # imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
 
 
 
