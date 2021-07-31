@@ -21,6 +21,8 @@ def saveimage(sub,dir_digit, basename ):
 
 
 def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
+    # if '01019-48945' in file_json :
+    #     print(f'01019-48945')
     with codecs.open(file_json, 'r', encoding='utf-8') as f:
         dict_bmp_info = json.load(f)
         digitFractNo = int(dict_bmp_info['digitFractNo'])
@@ -28,6 +30,9 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
         dataValue = int(dict_bmp_info['dataValue'] * 10 ** digitFractNo)
         digitRect = dict_bmp_info['digitRect']
         str_dataValue = f'{dataValue:0{digitAllNo}}'
+        str_igmsGaugeDataId = dict_bmp_info['igmsGaugeDataId']
+        if str_dataValue != str_igmsGaugeDataId :
+            print(f'{file_json}')
         
         if digit_type == 'digit_7'  and digitAllNo > 5 :
             return
@@ -42,6 +47,7 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
         if img == None:
             print(f"Can't read a image file :{file_bmp}")
             return
+
         for index  in range(digitAllNo) :
             x, y, width, height = list_digitRect[index]
             sub = img.crop((x,y,x+width,y+height))
