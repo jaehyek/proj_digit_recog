@@ -2,8 +2,6 @@ import sys
 import os
 from glob import glob
 import codecs, json
-from PIL import Image
-import random
 import shutil
 import cv2
 import numpy as np
@@ -88,39 +86,20 @@ def makeImageFolder(folder_json, folder_digit, digit_type = 'all'):
         extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type)
         
 
+
 def makeTrainValidFromDigitClass(dir_digit_class, dir_train, dir_valid, train_ratio=0.8):
-    try:
-        if not os.path.isdir(dir_train):
-            os.mkdir(dir_train)
-    except:
-        pass
-    
-    for num in range(10):
-        try:
-            dir_digit = os.path.join(dir_train, f'{num}')
-            os.mkdir(dir_digit)
-        except:
-            continue
+    dir_digitname = [str(aa) for aa in range(10)]
 
-    try:
-        if not os.path.isdir(dir_valid):
-            os.mkdir(dir_valid)
-    except:
-        pass
-
-    for num in range(10):
-        try:
-            dir_digit = os.path.join(dir_valid, f'{num}')
-            os.mkdir(dir_digit)
-        except:
-            continue
+    # make dir_train, dir_test
+    list_dir = [os.path.join(aa, bb) for aa in [dir_train, dir_valid] for bb in dir_digitname]
+    temp = [os.makedirs(kk, exist_ok=True) for kk in list_dir]
             
-    for index in range(10):
-        dir_src = os.path.join(dir_digit_class, str(index))
-        dir_train_dest = os.path.join(dir_train, str(index))
-        dir_valid_dest = os.path.join(dir_valid, str(index))
+    for dir_digit in dir_digitname:
+        dir_src = os.path.join(dir_digit_class, dir_digit)
+        dir_train_dest = os.path.join(dir_train, dir_digit)
+        dir_valid_dest = os.path.join(dir_valid, dir_digit)
         
-        list_src = glob(dir_src + r"\*.jpg")
+        list_src = glob(dir_src + r"/*.jpg")
         len_src = len(list_src)
         len_train =  int(train_ratio * len_src)
         len_valid = len_src - len_train
@@ -168,7 +147,8 @@ def imageAugmentation(dir_in, dir_out):
     except:
         pass
 
-    list_jpg = glob(dir_in + r"\**\*.jpg", recursive=True)
+    list_jpg = glob(dir_in + r"/**/*.jpg", recursive=True)
+    print(f'len(list_jpg) is {len(list_jpg)}')
 
     ## https://github.com/albumentations-team/albumentations
     list_aug = [
@@ -335,6 +315,7 @@ def imageAugmentation(dir_in, dir_out):
     
     
     for jpg in list_jpg :
+        print('.', end='')
         jpg_out = jpg.replace(dir_in, dir_out)
         dir_out_jpg = os.path.dirname(jpg_out)
         try:
@@ -395,8 +376,7 @@ def get_Image_Value_List_from_json(file_json):
     list_image, list_value, dict_json_info = extractDigitImage_Value_List( file_json, os.path.splitext(file_json)[0] + '.bmp')
     return list_image, list_value, dict_json_info
 
-    
-    
+
 if __name__ == '__main__' :
 
     # json, jpg 파일이 있는 dir을 지정하고,   출력은 지정한 dir밑에  0 ~9 까지 dir을 만들고 해당 숫자 이미지들이  jpg형태로 저장한다.,
@@ -414,10 +394,10 @@ if __name__ == '__main__' :
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples3', r'.\digit_class_samp3', 'all')  # digit_7, digit_normal, digit_all
     # imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
 
-    imageAugmentation(r'.\digit_class_samp2', r'.\digit_class_samp2_aug')
-    imageAugmentation(r'.\digit_class_samp3', r'.\digit_class_samp3_aug')
+    # imageAugmentation(r'.\digit_class_samp2', r'.\digit_class_samp2_aug')
+    # imageAugmentation(r'.\digit_class_samp3', r'.\digit_class_samp3_aug')
 
-
+    makeTrainValidFromDigitClass(r'./digit_class_All_aug_sum', r'./digit_class_train', r'./digit_class_test', 0.8)
 
     print('job done')
 

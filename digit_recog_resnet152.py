@@ -22,6 +22,36 @@ from makeImageFolder import get_Image_Value_List_from_json
 import random
 from PIL import Image
 
+import argparse
+import torch.multiprocessing as mp
+os.environ['OMP_NUM_THREADS'] = '1'
+
+def get_args():
+    parser = argparse.ArgumentParser(description=None)
+    parser.add_argument('--model_filename', default='model_resnet152.pt', type=str, help='model file name')
+    parser.add_argument('--batch_size', default=16, type=int, help='batch size')
+    parser.add_argument('--epoches', default=100, type=int, help='epches')
+
+    parser.add_argument('--processes', default=20, type=int, help='number of processes to train with')
+    parser.add_argument('--render', default=True, type=bool, help='renders the atari environment')
+    parser.add_argument('--test', default=False, type=bool, help='sets lr=0, chooses most likely actions')
+    parser.add_argument('--rnn_steps', default=20, type=int, help='steps to train LSTM over')
+    parser.add_argument('--lr', default=1e-4, type=float, help='learning rate')
+    parser.add_argument('--seed', default=1, type=int, help='seed random # generators (for reproducibility)')
+    parser.add_argument('--gamma', default=0.99, type=float, help='rewards discount factor')
+    parser.add_argument('--tau', default=1.0, type=float, help='generalized advantage estimation discount')
+    parser.add_argument('--horizon', default=0.99, type=float, help='horizon for running averages')
+    parser.add_argument('--hidden', default=256, type=int, help='hidden size of GRU')
+
+    return parser.parse_args()
+
+
+
+
+
+
+
+
 is_cuda = None
 optimizer = None
 
@@ -54,15 +84,15 @@ def imsave(inp, filename):
 
 class LayerActivations():
     features = None
-    
+
     def __init__(self, model, layer_num):
         # print(model[layer_num])
         self.hook = model[layer_num].register_forward_hook(self.hook_fn)
-    
+
     def hook_fn(self, module, input, output):
         print(f'module:{module}, input_shape:{input[0].shape}, output shape:{output.shape}')
         # self.features = output.cpu().data.numpy()
-    
+
     def remove(self):
         self.hook.remove()
 
@@ -71,7 +101,7 @@ def preconvfeat(dataset, model):
     global is_cuda
     conv_features = []
     labels_list = []
-    
+
     for data in dataset:
         inputs, labels = data
         if is_cuda:
@@ -81,7 +111,7 @@ def preconvfeat(dataset, model):
         conv_features.extend(output.data.cpu().numpy())
         labels_list.extend(labels.data.cpu().numpy())
     conv_features = np.concatenate([[feat] for feat in conv_features])
-    
+
     return (conv_features, labels_list)
 
 
@@ -89,10 +119,10 @@ class My_dataset(Dataset):
     def __init__(self, feat, labels):
         self.conv_feat = feat
         self.labels = labels
-    
+
     def __len__(self):
         return len(self.conv_feat)
-    
+
     def __getitem__(self, idx):
         return self.conv_feat[idx], self.labels[idx]
 
@@ -115,17 +145,17 @@ def fit_numpy(epoch, model, data_loader, phase='training', volatile=False):
         # data = data.view(data.size(0), -1)
         output = model(data)
         loss = F.cross_entropy(output, target)
-        
+
         running_loss += F.cross_entropy(output, target, reduction='sum').data
         preds = output.data.max(dim=1, keepdim=True)[1]
         running_correct += preds.eq(target.data.view_as(preds)).cpu().sum()
         if phase == 'training':
             loss.backward()
             optimizer.step()
-    
+
     loss = running_loss / len(data_loader.dataset)
     accuracy = 100. * running_correct / len(data_loader.dataset)
-    
+
     print(
         f'epoch:{epoch}, {phase} loss is {loss:{5}.{2}} and {phase} accuracy is {running_correct}/{len(data_loader.dataset)} {accuracy:{10}.{4}}')
     return loss, accuracy
@@ -139,25 +169,26 @@ train_transform = transforms.Compose([transforms.Resize((224, 224))
                                       ])
 
 
-def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=None, model_path_save=r'./model_wresnet101.pt'):
+def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=None,
+                    model_path_save=r'./model_wresnet101.pt'):
     global is_cuda, optimizer, train_transform
     is_cuda = False
     if torch.cuda.is_available():
         is_cuda = True
-    
+
     # setting parameter
     batch_size = 16
     epoch_loop = 70 if phase == 'training' else 1
-    
+
     train = ImageFolder(dir_train, train_transform)
     train_data_loader = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
-    
+
     # train_data_loader = torch.utils.data.DataLoader(train, batch_size=1, shuffle=True)
     # for i, (data, target) in enumerate( train_data_loader) :
     #     imsave(data[0], os.path.join('test', str(target[0].tolist()) + '_' + str(i) + '.jpg'))
     #
     # exit()
-    
+
     if phase == 'training' and model_path_load == None:
         print('resnet16(pretrained=True)')
         # resnet = models.wide_resnet101_2(pretrained=True)
@@ -165,36 +196,36 @@ def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=No
     else:
         print('resnet16(pretrained=False)')
         resnet = models.resnet152(pretrained=False)
-    
+
     # print(resnet)
     # resnet.fc.out_features = 10
     resnet.fc = nn.Linear(in_features=2048, out_features=10, bias=True)
-    
+
     if is_cuda == True:
         resnet = resnet.cuda()
-    
+
     optimizer = optim.SGD(resnet.parameters(), lr=0.0001, momentum=0.5)
-    
+
     if model_path_load != None:
         if is_cuda == True:
             dev = torch.device('cuda')
         else:
             dev = torch.device('cpu')
-        
+
         print(f'load from {model_path_load}')
         checkpoint = torch.load(model_path_load, map_location=dev)
         resnet.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    
+
     # check point
     if phase == 'validation' and model_path_load == None:
         print('model_path must not be None.')
         raise Exception("model_path must not be None.")
-    
+
     # for layer in resnet.classifier.children():
     #     if (type(layer) == nn.Dropout):
     #         layer.p = dropout
-    
+
     # print(f'___ execute the preconvfeat ___')
     #
     # for param in resnet.features.parameters():
@@ -207,7 +238,7 @@ def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=No
     #
     # train_feat_dataset = My_dataset(conv_feat_train, labels_train)
     # train_feat_loader = DataLoader(train_feat_dataset, batch_size=batch_size, shuffle=True)
-    
+
     train_losses, train_accuracy = [], []
 
     epoch_loss_prev = 100.
@@ -215,8 +246,8 @@ def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=No
         epoch_loss, epoch_accuracy = fit_numpy(epoch, resnet, train_data_loader, phase=phase)
         train_losses.append(epoch_loss)
         train_accuracy.append(epoch_accuracy)
-    
-        if epoch_loss < epoch_loss_prev :
+
+        if epoch_loss < epoch_loss_prev:
             if model_path_save != None:
                 torch.save({
                     'model_state_dict': resnet.state_dict(),
@@ -225,23 +256,23 @@ def DigitRecogModel(dir_train, dropout=0.5, phase='training', model_path_load=No
                 print(f'{model_path_save} was saved ')
 
             epoch_loss_prev = epoch_loss
-    
+
     return train_losses[-1], train_accuracy[-1]
 
 
 class DigitGaugeDataset(Dataset):
     def __init__(self, file_json, transform):
         list_image, list_value, dict_json_info = get_Image_Value_List_from_json(file_json)
-        
+
         self.list_image = list_image
         self.list_label = list_value
         self.dict_json_info = dict_json_info
         self.transform = transform
-    
+
     def __len__(self):
         # return size of dataset
         return len(self.list_image)
-    
+
     def __getitem__(self, idx):
         image = self.list_image[idx]
         image = self.transform(image)
@@ -253,17 +284,16 @@ def getValueFromJson(file_json, model_path_load):
     is_cuda = False
     if torch.cuda.is_available():
         is_cuda = True
-    
+
     gaugedataset = DigitGaugeDataset(file_json, train_transform)
     len_digit = len(gaugedataset)
-    
+
     gauge_data_loader = torch.utils.data.DataLoader(gaugedataset, batch_size=len_digit, shuffle=False)
     data, target = next(iter(gauge_data_loader))
-    
+
     resnet = models.resnet152(pretrained=False)
     # resnet.fc.out_features = 10
     resnet.fc = nn.Linear(in_features=2048, out_features=10, bias=True)
-
 
     if is_cuda == True:
         dev = torch.device('cuda')
@@ -275,45 +305,53 @@ def getValueFromJson(file_json, model_path_load):
 
     if is_cuda == True:
         resnet = resnet.cuda()
-    
 
-    
-
-    
     # for layer in resnet.classifier.children():
     #     if (type(layer) == nn.Dropout):
     #         layer.train(False)
     #         layer.p = 0
-    
+
     resnet.eval()
     # resnet.train()
     volatile = True
-    
+
     if is_cuda:
         data, target = data.cuda(), target.cuda()
     data, target = Variable(data, volatile), Variable(target)
-    
+
     output = resnet(data)
     preds = output.data.max(dim=1, keepdim=True)[1]
     count_correct = preds.eq(target.data.view_as(preds)).cpu().sum()
-    
+
     list_preds = preds.view(-1).tolist()
     print(f'target:{target.view(-1).tolist()}, preds:{list_preds}, accuracy :{count_correct / len_digit}')
     npred = int(''.join([str(aa) for aa in list_preds]))
-    
+
     if gaugedataset.dict_json_info['digitFractNo'] > 0:
         npred = npred / (10 ** gaugedataset.dict_json_info['digitFractNo'])
     return npred
 
 
+
+
+
 if __name__ == '__main__':
     time_start = time.time()
+
+    args = get_args()
+
+    torch.manual_seed(args.seed)
+
+
+
     # 처음 학습시킬때.
     model_filename = r'model_resnet152_sum.pt'
+
+
     loss, acc = DigitRecogModel(r'.\digit_class_normal_aug', dropout=0.2, phase='training', model_path_load=None,
                                 model_path_save=model_filename)
     # print(f'Model  Traning  loss:{loss}, accuracy:{acc}')
-    
+
     # 기존학습에 추가 학습시킬때.
     # loss, acc = DigitRecogModel(r'.\digit_class_aug', dropout=0.2, phase='training', model_path_load=model_name,
     #                             model_path_save=model_name)
