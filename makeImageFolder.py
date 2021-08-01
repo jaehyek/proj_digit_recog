@@ -21,8 +21,8 @@ def saveimage(sub,dir_digit, basename ):
 
 
 def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
-    # if '01019-48945' in file_json :
-    #     print(f'01019-48945')
+
+    b_savejson = False
     with codecs.open(file_json, 'r', encoding='utf-8') as f:
         dict_bmp_info = json.load(f)
         digitFractNo = int(dict_bmp_info['digitFractNo'])
@@ -33,6 +33,8 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
         str_igmsGaugeDataId = dict_bmp_info['igmsGaugeDataId']
         if str_dataValue != str_igmsGaugeDataId :
             print(f'{file_json}')
+            str_dataValue = str_igmsGaugeDataId
+            b_savejson = True
         
         if digit_type == 'digit_7'  and digitAllNo > 5 :
             return
@@ -51,7 +53,13 @@ def extractDigit_saveto(file_json, file_bmp, list_dir_digit, digit_type):
         for index  in range(digitAllNo) :
             x, y, width, height = list_digitRect[index]
             sub = img.crop((x,y,x+width,y+height))
-            saveimage(sub,list_dir_digit[int(str_dataValue[index])], os.path.basename(file_json).split('.')[0] + f'_{str_dataValue[index]}' )
+            saveimage(sub,list_dir_digit[int(str_dataValue[index])], os.path.basename(file_json).split('.')[0] + f'_{index}{str_dataValue[index]}' )
+
+    if b_savejson == True :
+        dict_bmp_info['dataValue'] =  str_dataValue
+        with codecs.open(file_json, 'w', encoding='utf-8') as f:
+            json.dump(dict_bmp_info,f  )
+
 
 
 
@@ -403,8 +411,11 @@ if __name__ == '__main__' :
     # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'.\digit_class_normal', 'digit_normal')  # digit_7, digit_normal, digit_all
     # imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
 
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples2', r'.\digit_class_samp2', 'all')  # digit_7, digit_normal, digit_all
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples3', r'.\digit_class_samp3', 'all')  # digit_7, digit_normal, digit_all
     # imageAugmentation(r'.\digit_class_normal', r'.\digit_class_normal_aug')
+
+    imageAugmentation(r'.\digit_class_samp2', r'.\digit_class_samp2_aug')
+    imageAugmentation(r'.\digit_class_samp3', r'.\digit_class_samp3_aug')
 
 
 
