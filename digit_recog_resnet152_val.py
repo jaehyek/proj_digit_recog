@@ -2,8 +2,6 @@ import torch
 import argparse
 import torch.nn.functional as F
 import torch.nn as nn
-import torch.optim as optim
-import torch.utils.data.distributed
 from torchvision import datasets, transforms, models
 import os
 from tqdm import tqdm
@@ -13,7 +11,7 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Example', formatt
 parser.add_argument('--train-dir', default=os.path.expanduser('~/proj/proj_digit_recog/digit_class_All_aug_train'), help='path to training data')
 parser.add_argument('--val-dir', default=os.path.expanduser('~/proj/proj_digit_recog/digit_class_All_aug_test'), help='path to validation data')
 parser.add_argument('--log-dir', default='./logs', help='tensorboard log directory')
-parser.add_argument('--checkpoint-format', default='./checkpoint-{epoch}.pth.tar', help='checkpoint file format')
+parser.add_argument('--checkpoint-format', default='./model_resnet152_sum.pt', help='checkpoint file format')
 parser.add_argument('--fp16-allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
 parser.add_argument('--batches-per-allreduce', type=int, default=1,
                     help='number of batches processed locally before '
@@ -125,8 +123,8 @@ if __name__ == '__main__':
         # Move model to GPU.
         model.cuda()
 
-    filepath = args.checkpoint_format.format(epoch=0)
+    filepath = args.checkpoint_format
     checkpoint = torch.load(filepath)
-    model.load_state_dict(checkpoint['model'])
+    model.load_state_dict(checkpoint['model_state_dict'])
 
     validate()
