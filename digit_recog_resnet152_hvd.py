@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Example', formatt
 parser.add_argument('--train-dir', default=os.path.expanduser('~/proj/proj_digit_recog/digit_class_All_aug_train'), help='path to training data')
 parser.add_argument('--val-dir', default=os.path.expanduser('~/proj/proj_digit_recog/digit_class_All_aug_test'), help='path to validation data')
 parser.add_argument('--log-dir', default='./logs', help='tensorboard log directory')
-parser.add_argument('--checkpoint-format', default='./resetnet152-{epoch}.pth.tar', help='checkpoint file format')
+parser.add_argument('--checkpoint-format', default='./resnet152-{epoch}.pt', help='checkpoint file format')
 parser.add_argument('--fp16-allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
 parser.add_argument('--batches-per-allreduce', type=int, default=1,
                     help='number of batches processed locally before '
@@ -125,8 +125,8 @@ def save_checkpoint(epoch):
     if hvd.rank() == 0:
         filepath = args.checkpoint_format.format(epoch=epoch + 1)
         state = {
-            'model': model.state_dict(),
-            'optimizer': optimizer.state_dict(),
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
         }
         torch.save(state, filepath)
 
@@ -249,8 +249,8 @@ if __name__ == '__main__':
     if resume_from_epoch > 0 and hvd.rank() == 0:
         filepath = args.checkpoint_format.format(epoch=resume_from_epoch)
         checkpoint = torch.load(filepath)
-        model.load_state_dict(checkpoint['model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Horovod: broadcast parameters & optimizer state.
     hvd.broadcast_parameters(model.state_dict(), root_rank=0)
@@ -258,5 +258,5 @@ if __name__ == '__main__':
 
     for epoch in range(resume_from_epoch, args.epochs):
         train(epoch)
-        validate(epoch)
         save_checkpoint(epoch)
+        validate(epoch)
