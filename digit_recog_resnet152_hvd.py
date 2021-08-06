@@ -15,8 +15,8 @@ from tqdm import tqdm
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Example', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--train-dir', default=os.path.expanduser('~/proj/proj_digit_recog/digit_class_All_aug_train'), help='path to training data')
-parser.add_argument('--val-dir', default=os.path.expanduser('~/proj/proj_digit_recog/digit_class_All_aug_test'), help='path to validation data')
+parser.add_argument('--train-dir', default=os.path.expanduser('./digit_class_aug0'), help='path to training data')
+parser.add_argument('--val-dir', default=os.path.expanduser('./digit_class_aug0'), help='path to validation data')
 parser.add_argument('--log-dir', default='./logs', help='tensorboard log directory')
 parser.add_argument('--checkpoint-format', default='./resnet152-{epoch}.pt', help='checkpoint file format')
 parser.add_argument('--fp16-allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
@@ -28,9 +28,9 @@ parser.add_argument('--use-adasum', action='store_true', default=False, help='us
 parser.add_argument('--gradient-predivide-factor', type=float, default=1.0, help='apply gradient predivide factor in optimizer (default: 1.0)')
 
 # Default settings from https://arxiv.org/abs/1706.02677.
-parser.add_argument('--batch-size', type=int, default=32, help='input batch size for training')
+parser.add_argument('--batch-size', type=int, default=64, help='input batch size for training')
 parser.add_argument('--val-batch-size', type=int, default=32, help='input batch size for validation')
-parser.add_argument('--epochs', type=int, default=90, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train')
 parser.add_argument('--base-lr', type=float, default=0.0125, help='learning rate for a single GPU')
 parser.add_argument('--warmup-epochs', type=float, default=5, help='number of warmup epochs')
 parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum')
@@ -186,32 +186,31 @@ if __name__ == '__main__':
     # When supported, use 'forkserver' to spawn dataloader workers instead of 'fork' to prevent
     # issues with Infiniband implementations that are not fork-safe
     if (kwargs.get('num_workers', 0) > 0 and hasattr(mp, '_supports_context') and
-            mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
+        mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
         kwargs['multiprocessing_context'] = 'forkserver'
 
     train_dataset = datasets.ImageFolder(args.train_dir,
-                             transform=transforms.Compose([
-                                 transforms.Resize((224, 224)),
-                                 transforms.RandomRotation(0.2),
-                                 transforms.ToTensor(),
-                                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                      std=[0.229, 0.224, 0.225])
-                             ]))
+                                         transform=transforms.Compose([
+                                             transforms.Resize((224, 224)),
+                                             transforms.RandomRotation(0.2),
+                                             transforms.ToTensor(),
+                                             transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                                  std=[0.229, 0.224, 0.225])
+                                         ]))
     # Horovod: use DistributedSampler to partition data among workers. Manually specify
     # `num_replicas=hvd.size()` and `rank=hvd.rank()`.
-    train_sampler = torch.utils.data.distributed.DistributedSampler( train_dataset, num_replicas=hvd.size(), rank=hvd.rank())
-    train_loader = torch.utils.data.DataLoader( train_dataset, batch_size=allreduce_batch_size, sampler=train_sampler, **kwargs)
+    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, num_replicas=hvd.size(), rank=hvd.rank())
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=allreduce_batch_size, sampler=train_sampler, **kwargs)
 
     val_dataset = datasets.ImageFolder(args.val_dir,
-                             transform=transforms.Compose([
-                                 transforms.Resize((224, 224)),
-                                 transforms.ToTensor(),
-                                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                      std=[0.229, 0.224, 0.225])
-                             ]))
-    val_sampler = torch.utils.data.distributed.DistributedSampler( val_dataset, num_replicas=hvd.size(), rank=hvd.rank())
+                                       transform=transforms.Compose([
+                                           transforms.Resize((224, 224)),
+                                           transforms.ToTensor(),
+                                           transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                                std=[0.229, 0.224, 0.225])
+                                       ]))
+    val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset, num_replicas=hvd.size(), rank=hvd.rank())
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.val_batch_size, sampler=val_sampler, **kwargs)
-
 
     # Set up standard ResNet-50 model.
     model = models.resnet152()

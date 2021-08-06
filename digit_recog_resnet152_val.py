@@ -12,7 +12,7 @@ def make_args():
     parser.add_argument('--train-dir', default=os.path.expanduser('./digit_class_All_aug_train'), help='path to training data')
     parser.add_argument('--val-dir', default=os.path.expanduser('./digit_class_val'), help='path to validation data')
     parser.add_argument('--log-dir', default='./logs', help='tensorboard log directory')
-    parser.add_argument('--checkpoint-format', default='./resnet152-16.pth.tar', help='checkpoint file format')
+    parser.add_argument('--checkpoint-format', default='./resnet152-12.pt', help='checkpoint file format')
     parser.add_argument('--fp16-allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
     parser.add_argument('--batches-per-allreduce', type=int, default=1,
                         help='number of batches processed locally before '
