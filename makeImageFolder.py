@@ -11,6 +11,7 @@ from imgaug import augmenters as iaa
 import imgaug as ia
 import torchvision.transforms.functional as TF
 
+
 from PIL import Image
 
 
@@ -129,13 +130,10 @@ class MyRotationTransform:
         return TF.rotate(x, angle)
 
 
-def imageAugmentation(dir_in, dir_out):
+def imageAugmentation(dir_in, dir_out, copy_json = True ):
     random.seed(42)
-    try:
-        if not os.path.isdir(dir_out):
-            os.mkdir(dir_out)
-    except:
-        pass
+    os.makedirs(dir_out, exist_ok=True)
+
 
     list_jpg = glob(dir_in + r"/**/*.jpg", recursive=True)
     print(f'len(list_jpg) is {len(list_jpg)}')
@@ -302,25 +300,33 @@ def imageAugmentation(dir_in, dir_out):
         'Rotate',
     ]
 
-    for jpg in list_jpg:
+    for jpg_in in list_jpg:
         # print('.', end='')
-        jpg_out = jpg.replace(dir_in, dir_out)
-        dir_out_jpg = os.path.dirname(jpg_out)
-        try:
-            if not os.path.exists(dir_out_jpg):
-                os.mkdir(dir_out_jpg)
-        except:
-            pass
+        jpg_out = jpg_in.replace(dir_in, dir_out)
+        dir_jpg_out = os.path.dirname(jpg_out)
+
+        os.makedirs(dir_jpg_out, exist_ok=True)
+
         jpg_out_basename = os.path.splitext(jpg_out)[0]
-        image = imageread(jpg)
+        jpg_in_json = os.path.splitext(jpg_in)[0] + '.json'
+        if copy_json != True or not os.path.exists(jpg_in_json) :
+            jpg_in_json = None
+        image = imageread(jpg_in)
         imagesave(image, jpg_out_basename + '.jpg')  # save the orignal image.
+        if jpg_in_json != None:
+            shutil.copy(jpg_in_json, jpg_out_basename + '.json')
+
         for i in range(len(list_aug)):
             augmented_image = list_aug[i](image=image)['image']
             imagesave(augmented_image, jpg_out_basename + '_' + list_aug_name[i] + '.jpg')
+            if jpg_in_json != None :
+                shutil.copy(jpg_in_json, jpg_out_basename + '_' + list_aug_name[i] + '.json')
 
         for i in range(len(list_aa)):
             augmented_image = list_aa[i](image=image)
             imagesave(augmented_image, jpg_out_basename + '_' + list_aa_name[i] + '.jpg')
+            if jpg_in_json != None :
+                shutil.copy(jpg_in_json, jpg_out_basename + '_' + list_aa_name[i] + '.json')
 
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # im_pil = Image.fromarray(image)
@@ -354,11 +360,11 @@ if __name__ == '__main__':
     # imageAugmentation(r'.\digit_class_samp2', r'.\digit_class_samp2_aug')
     # imageAugmentation(r'.\digit_class_samp3', r'.\digit_class_samp3_aug')
 
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'./digit_class_sam')
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples2', r'./digit_class_sam')
-    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples3', r'./digit_class_sam')
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples', r'./digit_class_sam')
+    makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples2', r'./digit_class_sam2')
+    # makeImageFolder(r'D:\proj_gauge\민성기\digitGaugeSamples3', r'./digit_class_sam')
 
-    # imageAugmentation(r'./digit_class_sample', r'./digit_class_aug')
+    # imageAugmentation(r'D:\proj_gauge\digit_paf_data\digit_class_normal\images', r'D:\proj_gauge\digit_paf_data\digit_class_normal_aug\images', copy_json = True )
     # makeTrainValidFromDigitClass(r'./digit_class_aug', r'./digit_class_aug_train', r'./digit_class_aug_val', 0.8)
 
     print('job done')

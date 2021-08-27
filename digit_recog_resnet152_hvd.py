@@ -13,12 +13,17 @@ import os
 import math
 from tqdm import tqdm
 
+from torch.utils.data import Dataset, DataLoader
+import gen_digit
+from PIL import Image
+import cv2
+
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Example', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--train-dir', default=os.path.expanduser('./digit_class_aug0'), help='path to training data')
-parser.add_argument('--val-dir', default=os.path.expanduser('./digit_class_aug0'), help='path to validation data')
+parser.add_argument('--train-dir', default=os.path.expanduser('./digit_class_aug_train'), help='path to training data')
+parser.add_argument('--val-dir', default=os.path.expanduser('./digit_class_aug_val'), help='path to validation data')
 parser.add_argument('--log-dir', default='./logs', help='tensorboard log directory')
-parser.add_argument('--checkpoint-format', default='./resnet152-{epoch}.pt', help='checkpoint file format')
+parser.add_argument('--checkpoint-format', default='./resnet152-digitgen-{epoch}.pt', help='checkpoint file format')
 parser.add_argument('--fp16-allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
 parser.add_argument('--batches-per-allreduce', type=int, default=1,
                     help='number of batches processed locally before '
@@ -30,7 +35,7 @@ parser.add_argument('--gradient-predivide-factor', type=float, default=1.0, help
 # Default settings from https://arxiv.org/abs/1706.02677.
 parser.add_argument('--batch-size', type=int, default=64, help='input batch size for training')
 parser.add_argument('--val-batch-size', type=int, default=32, help='input batch size for validation')
-parser.add_argument('--epochs', type=int, default=10, help='number of epochs to train')
+parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
 parser.add_argument('--base-lr', type=float, default=0.0125, help='learning rate for a single GPU')
 parser.add_argument('--warmup-epochs', type=float, default=5, help='number of warmup epochs')
 parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum')
@@ -146,6 +151,27 @@ class Metric(object):
     def avg(self):
         return self.sum / self.n
 
+class Dataset_GenDigit(Dataset):
+    def __init__(self, transform=None, target_transform=None):
+        self.args = gen_digit.gen_digit_ready()
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return self.args.len_total
+
+    def __getitem__(self, idx):
+        image, label, np_keypoint = gen_digit.generate_digits_by_index(self.args, idx)
+        image_cv2 = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_pil = Image.fromarray(image_cv2)
+
+        if self.transform is not None:
+            image_pil = self.transform(image_pil)
+
+        if self.target_transform is not None:
+            label = self.target_transform(label)
+
+        return image_pil, label
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -189,26 +215,21 @@ if __name__ == '__main__':
         mp._supports_context and 'forkserver' in mp.get_all_start_methods()):
         kwargs['multiprocessing_context'] = 'forkserver'
 
-    train_dataset = datasets.ImageFolder(args.train_dir,
-                                         transform=transforms.Compose([
-                                             transforms.Resize((224, 224)),
-                                             transforms.RandomRotation(0.2),
-                                             transforms.ToTensor(),
-                                             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                  std=[0.229, 0.224, 0.225])
-                                         ]))
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+    # train_dataset = datasets.ImageFolder(args.train_dir,transform=transform)
+    train_dataset = Dataset_GenDigit(transform=transform)
+
     # Horovod: use DistributedSampler to partition data among workers. Manually specify
     # `num_replicas=hvd.size()` and `rank=hvd.rank()`.
     train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset, num_replicas=hvd.size(), rank=hvd.rank())
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=allreduce_batch_size, sampler=train_sampler, **kwargs)
 
-    val_dataset = datasets.ImageFolder(args.val_dir,
-                                       transform=transforms.Compose([
-                                           transforms.Resize((224, 224)),
-                                           transforms.ToTensor(),
-                                           transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                std=[0.229, 0.224, 0.225])
-                                       ]))
+    val_dataset = train_dataset
     val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset, num_replicas=hvd.size(), rank=hvd.rank())
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.val_batch_size, sampler=val_sampler, **kwargs)
 
@@ -258,4 +279,4 @@ if __name__ == '__main__':
     for epoch in range(resume_from_epoch, args.epochs):
         train(epoch)
         save_checkpoint(epoch)
-        validate(epoch)
+        # validate(epoch)

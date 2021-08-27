@@ -3,8 +3,12 @@ import argparse
 import torch.nn.functional as F
 import torch.nn as nn
 from torchvision import datasets, transforms, models
+from torch.utils.data import Dataset, DataLoader
 import os
 from tqdm import tqdm
+import gen_digit
+from PIL import Image
+import cv2
 
 def make_args():
     # Training settings
@@ -12,7 +16,7 @@ def make_args():
     parser.add_argument('--train-dir', default=os.path.expanduser('./digit_class_All_aug_train'), help='path to training data')
     parser.add_argument('--val-dir', default=os.path.expanduser('./digit_class_val'), help='path to validation data')
     parser.add_argument('--log-dir', default='./logs', help='tensorboard log directory')
-    parser.add_argument('--checkpoint-format', default='./resnet152-12.pt', help='checkpoint file format')
+    parser.add_argument('--checkpoint-format', default='./resnet152-digitgen-3.pt', help='checkpoint file format')
     parser.add_argument('--fp16-allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
     parser.add_argument('--batches-per-allreduce', type=int, default=1,
                         help='number of batches processed locally before '
@@ -53,6 +57,28 @@ class MyImageFolder(datasets.ImageFolder):
             target = self.target_transform(target)
 
         return sample, (target, path)
+
+class Dataset_GenDigit(Dataset):
+    def __init__(self, transform=None, target_transform=None):
+        self.args = gen_digit.gen_digit_ready()
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return self.args.len_total
+
+    def __getitem__(self, idx):
+        image, label, np_keypoint = gen_digit.generate_digits_by_index(self.args, idx)
+        image_cv2 = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image_pil = Image.fromarray(image_cv2)
+
+        if self.transform is not None:
+            image_pil = self.transform(image_pil)
+
+        if self.target_transform is not None:
+            label = self.target_transform(label)
+
+        return image_pil, label
 
 
 def validate(model, val_loader):
@@ -138,6 +164,7 @@ if __name__ == '__main__':
     model = load_model(args)
 
     val_dataset = MyImageFolder(args.val_dir, transform=resnet_transform)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.val_batch_size)
+    # val_dataset = Dataset_GenDigit(transform=resnet_transform)
+    val_loader = DataLoader(val_dataset, batch_size=args.val_batch_size)
 
     validate(model,val_loader )

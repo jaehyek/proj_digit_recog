@@ -57,7 +57,7 @@ if __name__ == '__main__':
     list_json = glob(dir_digit_test + r"\*.json")
     print(f'len(list_json) is {len(list_json)}')
 
-    model_filename = 'resnet152-41.pt'
+    model_filename = 'resnet152-100.pt'
 
     for file_json in list_json :
         npred = getValueFromJson(file_json, model_path_load=model_filename)

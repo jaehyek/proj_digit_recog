@@ -11,3 +11,86 @@ conda install pytorch torchvision torchaudio cudatoolkit=11.1 -c pytorch -c cond
 pip install opencv-python
 pip install -U albumentations
 pip install imgaug
+
+
+<<< horovod 설치하기 >>>
+- 필요한 driver version을 맞추어야 한다.
+- nvidia-smi ->
+   NVIDIA-SMI 450.142.00   Driver Version: 470.57.02    CUDA Version: 11.4
+
+우분투 18.04 - NVIDIA , Cuda, cudnn  드라이버를 설치하는 방법
+https://codechacha.com/ko/install-nvidia-driver-ubuntu/ 에서 수동으로 설치한다.
+cuda driver을  NVIDIA Driver downloads 에서  download해서 수동으로 설치
+
+
+>> cuda 설치후.
+sudo sh -c "echo 'export PATH=/usr/local/cuda/bin:$PATH' >> ~/.bashrc"
+sudo sh -c "echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc"
+sudo sh -c "echo 'export CUDADIR=/usr/local/cuda' >> ~/.bashrc"
+
+
+
+>>conda install openmpi
+>> pip install torch torchvision
+>> conda install gxx_linux-64
+
+
+
+>> nccl을  github에서 받아서 직접 설치한다. ( Nvidia download 하지 말고 )
+NCCL은 NVIDIA github 에서 받을 수 있다 (https://github.com/NVIDIA/nccl)
+
+1. 압축 해제
+2. 압축을 푼 폴더에서
+$ sudo make install
+3. build 폴더안의 폴더들을 /usr/local/nccl 폴더로 복사 (include, lib, obj)
+$ sudo cp -r /nccl경로/build /usr/local/nccl
+4. 경로설정 ( 본인은 ~/.bashrc 파일에 설정)
+$ sudo vim ~/.bashrc
+$ # nccl
+$ export NCCL_ROOT_DIR=/usr/local/nccl
+$ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/nccl/lib
+
+설치확인 : apt search nccl
+
+$ sudo ldconfig
+
+
+>>  cmake ( 최신버전 )
+pip install --upgrade cmake
+
+
+
+>> bits/libc-header-start.h: No such file or directory 오류
+sudo apt-get install gcc-multilib g++-multilib
+
+
+>> .bashrc
+export CUDADIR=/usr/local/cuda
+export CUDA_HOME=$CUDADIR
+export NCCL_ROOT_DIR=/usr/local/nccl
+export NCCL_INCLUDE_DIRS=/usr/local/nccl/include
+export NCCL_LIBRARIES=/usr/local/nccl/lib
+export HOROVOD_CUDA_HOME=$CUDA_HOME
+export HOROVOD_NCCL_HOME=$NCCL_ROOT_DIR
+export HOROVOD_GPU_OPERATIONS=NCCL
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/nccl/lib:$LD_LIBRARY_PATH
+
+>> for  libstdc++.so.6: version `GLIBCXX_3.4.22' not found
+apt-get update
+apt-get install libstdc++6
+
+
+>> horovod 설치.
+
+HOROVOD_WITH_PYTORCH=1 pip install --no-cache-dir horovod[pytorch]
+
+>>> 설치확인하기 ( 정보가 잘 맞지 않는다. )
+horovodrun --check-build
+
+ ( torch를 먼저 import 한다 )
+import torch
+import horovod.torch as hvd
+hvd.init()
+
+conda activate horovod
+conda deactivate
