@@ -20,35 +20,36 @@ import cv2
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Example', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--train-dir', default=os.path.expanduser('./digit_class_aug_train'), help='path to training data')
-parser.add_argument('--val-dir', default=os.path.expanduser('./digit_class_aug_val'), help='path to validation data')
-parser.add_argument('--log-dir', default='./logs', help='tensorboard log directory')
-parser.add_argument('--checkpoint-format', default='./resnet152-digitgen-{epoch}.pt', help='checkpoint file format')
-parser.add_argument('--fp16-allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
-parser.add_argument('--batches-per-allreduce', type=int, default=1,
+parser.add_argument('--train_dir', default=os.path.expanduser('./digit_class_aug_train'), help='path to training data')
+parser.add_argument('--val_dir', default=os.path.expanduser('./digit_class_aug_val'), help='path to validation data')
+parser.add_argument('--log_dir', default='./logs', help='tensorboard log directory')
+parser.add_argument('--checkpoint_format', default='./resnet152-digitgen-{epoch}.pt', help='checkpoint file format')
+parser.add_argument('--fp16_allreduce', action='store_true', default=False, help='use fp16 compression during allreduce')
+parser.add_argument('--batches_per_allreduce', type=int, default=1,
                     help='number of batches processed locally before '
                          'executing allreduce across workers; it multiplies '
                          'total batch size.')
-parser.add_argument('--use-adasum', action='store_true', default=False, help='use adasum algorithm to do reduction')
-parser.add_argument('--gradient-predivide-factor', type=float, default=1.0, help='apply gradient predivide factor in optimizer (default: 1.0)')
+parser.add_argument('--use_adasum', action='store_true', default=False, help='use adasum algorithm to do reduction')
+parser.add_argument('--gradient_predivide_factor', type=float, default=1.0, help='apply gradient predivide factor in optimizer (default: 1.0)')
 
 # Default settings from https://arxiv.org/abs/1706.02677.
-parser.add_argument('--batch-size', type=int, default=64, help='input batch size for training')
-parser.add_argument('--val-batch-size', type=int, default=32, help='input batch size for validation')
+parser.add_argument('--batch_size', type=int, default=64, help='input batch size for training')
+parser.add_argument('--val_batch_size', type=int, default=32, help='input batch size for validation')
 parser.add_argument('--epochs', type=int, default=100, help='number of epochs to train')
-parser.add_argument('--base-lr', type=float, default=0.0125, help='learning rate for a single GPU')
-parser.add_argument('--warmup-epochs', type=float, default=5, help='number of warmup epochs')
+parser.add_argument('--base_lr', type=float, default=0.0125, help='learning rate for a single GPU')
+parser.add_argument('--warmup_epochs', type=float, default=5, help='number of warmup epochs')
 parser.add_argument('--momentum', type=float, default=0.9, help='SGD momentum')
 parser.add_argument('--wd', type=float, default=0.00005, help='weight decay')
-parser.add_argument('--no-cuda', action='store_true', default=False, help='disables CUDA training')
+parser.add_argument('--disable_cuda', action='store_true', default=False, help='disables CUDA training')
 parser.add_argument('--seed', type=int, default=42, help='random seed')
 
 
-def train(epoch):
+def train(epoch, verbose,log_writer):
     model.train()
     train_sampler.set_epoch(epoch)
     metric_train_loss = Metric('metric_train_loss')
     metric_train_accuracy = Metric('metric_train_accuracy')
+
 
     with tqdm(total=len(train_loader), desc='Train Epoch     #{}'.format(epoch + 1), disable=not verbose) as t:
         for batch_idx, (data, target) in enumerate(train_loader):
@@ -78,7 +79,7 @@ def train(epoch):
         log_writer.add_scalar('train/accuracy', metric_train_accuracy.avg, epoch)
 
 
-def validate(epoch):
+def validate(epoch, verbose,log_writer):
     model.eval()
     metric_val_loss = Metric('metric_val_loss')
     metric_val_accuracy = Metric('metric_val_accuracy')
@@ -175,7 +176,7 @@ class Dataset_GenDigit(Dataset):
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    args.cuda = not args.disable_cuda and torch.cuda.is_available()
 
     allreduce_batch_size = args.batch_size * args.batches_per_allreduce
 
@@ -249,9 +250,7 @@ if __name__ == '__main__':
             lr_scaler = args.batches_per_allreduce * hvd.local_size()
 
     # Horovod: scale learning rate by the number of GPUs.
-    optimizer = optim.SGD(model.parameters(),
-                          lr=(args.base_lr * lr_scaler),
-                          momentum=args.momentum, weight_decay=args.wd)
+    optimizer = optim.SGD(model.parameters(), lr=(args.base_lr * lr_scaler), momentum=args.momentum, weight_decay=args.wd)
 
     # Horovod: (optional) compression algorithm.
     compression = hvd.Compression.fp16 if args.fp16_allreduce else hvd.Compression.none
@@ -277,6 +276,6 @@ if __name__ == '__main__':
     hvd.broadcast_optimizer_state(optimizer, root_rank=0)
 
     for epoch in range(resume_from_epoch, args.epochs):
-        train(epoch)
+        train(epoch, verbose,log_writer)
         save_checkpoint(epoch)
-        # validate(epoch)
+        # validate(epoch, verbose,log_writer)
